@@ -21,7 +21,7 @@ import java.util.TreeMap;
  *
  * @author Jürgen Moßgraber
  */
-@SuppressWarnings("javadoc")
+@SuppressWarnings("JavaDoc")
 public class TagDetector
 {
     private static final Map<String, String []> CATEGORIES                    = new HashMap<> ();

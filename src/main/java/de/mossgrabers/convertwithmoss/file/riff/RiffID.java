@@ -16,7 +16,7 @@ import de.mossgrabers.convertwithmoss.file.IChunk;
  *
  * @author Jürgen Moßgraber
  */
-@SuppressWarnings("javadoc")
+@SuppressWarnings("JavaDoc")
 public enum RiffID
 {
     /** ID for FormGroupExpression. */

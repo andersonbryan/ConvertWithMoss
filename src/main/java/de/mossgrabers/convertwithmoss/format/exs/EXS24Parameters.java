@@ -23,7 +23,7 @@ import de.mossgrabers.convertwithmoss.file.StreamUtils;
  *
  * @author Jürgen Moßgraber
  */
-@SuppressWarnings("javadoc")
+@SuppressWarnings("JavaDoc")
 public class EXS24Parameters extends EXS24Object
 {
     private static final int                   PARAMETER_COUNT_OLD        = 100;

@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.tx16wx;
@@ -495,7 +495,7 @@ public class TX16WxDetector extends AbstractDetector<MetadataWithSearchHeightSet
             tuning = XMLUtils.getIntegerAttribute (soundOffsetsElement, TX16WxTag.TUNING_COARSE, 0);
             tuning += XMLUtils.getIntegerAttribute (soundOffsetsElement, TX16WxTag.TUNING_FINE, 0) / 100.0;
         }
-        zone.setTune (groupTuningOffset + tuning);
+        zone.setTuning (groupTuningOffset + tuning);
 
         // There is group switching with sequences (round-robin) but it seems no zone switching
         // Key tracking not available

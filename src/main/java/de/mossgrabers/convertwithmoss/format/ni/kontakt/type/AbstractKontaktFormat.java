@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.ni.kontakt.type;
@@ -108,7 +108,7 @@ public abstract class AbstractKontaktFormat implements IKontaktFormat
             zone.setGain (MathUtils.valueToDb (volume));
             zone.setPanning (Math.clamp (program.getInstrumentPan () + kontaktGroup.getPan () + kontaktZone.getZonePan (), -1, 1));
 
-            zone.setTune (calculateTune (kontaktZone.getZoneTune (), kontaktGroup.getTune (), program.getInstrumentTune ()));
+            zone.setTuning (calculateTune (kontaktZone.getZoneTune (), kontaktGroup.getTune (), program.getInstrumentTune ()));
             zone.setKeyTracking (kontaktGroup.isKeyTracking () ? 1 : 0);
 
             zone.setVelocityLow (kontaktZone.getLowVelocity ());

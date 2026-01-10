@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.disting;
@@ -268,7 +268,7 @@ public class DistingExDetector extends AbstractDetector<MetadataSettingsUI>
         for (final IGroup group: groups)
             for (final ISampleZone zone: group.getSampleZones ())
             {
-                zone.setTune (tune);
+                zone.setTuning (tune);
                 zone.setGain (gain);
                 zone.setBendUp (pitchBendRange);
                 zone.setBendDown (-pitchBendRange);

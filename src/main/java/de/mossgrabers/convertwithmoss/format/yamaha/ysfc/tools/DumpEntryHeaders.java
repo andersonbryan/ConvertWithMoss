@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.yamaha.ysfc.tools;
@@ -9,10 +9,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.YamahaYsfcChunk;
-import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.YamahaYsfcPerformance;
-import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.YamahaYsfcPerformancePart;
 import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.YsfcFile;
+import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.file.YamahaYsfcChunk;
+import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.file.YamahaYsfcPerformance;
+import de.mossgrabers.convertwithmoss.format.yamaha.ysfc.file.YamahaYsfcPerformancePart;
 
 
 /**

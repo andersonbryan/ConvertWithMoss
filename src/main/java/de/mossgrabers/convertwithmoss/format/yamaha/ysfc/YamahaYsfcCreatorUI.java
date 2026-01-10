@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.yamaha.ysfc;
@@ -36,6 +36,8 @@ public class YamahaYsfcCreatorUI implements ICoreTaskSettings
         OUTPUT_FORMAT_BY_NAME.put ("X7L", Integer.valueOf (1));
         OUTPUT_FORMAT_BY_NAME.put ("X8U", Integer.valueOf (2));
         OUTPUT_FORMAT_BY_NAME.put ("X8L", Integer.valueOf (3));
+        // IMPROVE MOXF - Activate when MOXF writing is fixed
+        // OUTPUT_FORMAT_BY_NAME.put ("X6W", Integer.valueOf (4));
     }
 
     private ToggleGroup outputFormatToggleGroup;
@@ -53,7 +55,7 @@ public class YamahaYsfcCreatorUI implements ICoreTaskSettings
 
         panel.createSeparator ("@IDS_YSFC_LIBRARY_FORMAT");
         this.outputFormatToggleGroup = new ToggleGroup ();
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < OUTPUT_FORMAT_BY_NAME.size (); i++)
         {
             final RadioButton order = panel.createRadioButton ("@IDS_YSFC_OUTPUT_FORMAT_OPTION" + i);
             order.setAccessibleHelp (Functions.getMessage ("IDS_YSFC_LIBRARY_FORMAT"));
@@ -61,6 +63,7 @@ public class YamahaYsfcCreatorUI implements ICoreTaskSettings
         }
 
         this.createOnlyWaveformsCheckBox = panel.createCheckBox ("@IDS_YSFC_DESTINATION_TYPE_WAVEFORMS");
+        this.createOnlyWaveformsCheckBox.getStyleClass ().add ("paddingTop");
 
         return panel.getPane ();
     }

@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.waldorf.qpat;
@@ -303,7 +303,7 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
 
             for (final ISampleZone zone: group.getSampleZones ())
             {
-                zone.setTune (zone.getTune () + tune);
+                zone.setTuning (zone.getTuning () + tune);
                 zone.setKeyTracking (keyTracking);
                 zone.setBendUp (pitchbend);
                 zone.setBendDown (-pitchbend);
@@ -532,7 +532,7 @@ public class WaldorfQpatDetector extends AbstractDetector<MetadataSettingsUI>
         final int coarse = (int) Math.round (pitch);
         final double fineTune = pitch - coarse;
         zone.setKeyRoot (coarse);
-        zone.setTune (fineTune);
+        zone.setTuning (fineTune);
 
         // FromNote
         if (params.length <= 2)

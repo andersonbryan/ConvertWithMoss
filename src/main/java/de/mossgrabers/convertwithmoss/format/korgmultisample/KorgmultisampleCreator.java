@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.korgmultisample;
@@ -244,7 +244,7 @@ public class KorgmultisampleCreator extends AbstractWavCreator<WavChunkSettingsU
             sampleOutput.write (1);
         }
 
-        final double tune = sample.getTune ();
+        final double tune = sample.getTuning ();
         if (tune != 0)
         {
             sampleOutput.write (KorgmultisampleConstants.ID_TUNE);

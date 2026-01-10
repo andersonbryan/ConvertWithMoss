@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.core.model;
@@ -328,7 +328,7 @@ public interface ISampleZone
      * @return The tuning positive or negative semi-tones, which means that 0.01 represents 1 cent
      *         (1 semi-tone is 100 cent)
      */
-    double getTune ();
+    double getTuning ();
 
 
     /**
@@ -337,7 +337,7 @@ public interface ISampleZone
      * @param tune The tuning positive or negative semi-tones, which means that 0.01 represents 1
      *            cent (1 semi-tone is 100 cent)
      */
-    void setTune (double tune);
+    void setTuning (double tune);
 
 
     /**

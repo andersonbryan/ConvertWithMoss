@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.disting;
@@ -141,7 +141,7 @@ public class DistingExCreator extends AbstractWavCreator<DistingExCreatorUI>
                     parameters[18] = bendUp > 0 ? bendUp : 2;
 
                     // Octave + Transpose + fine tune
-                    double tune = zone.getTune ();
+                    double tune = zone.getTuning ();
                     final int octaves = (int) (tune / 12);
                     parameters[11] = octaves;
                     tune -= octaves * 12;

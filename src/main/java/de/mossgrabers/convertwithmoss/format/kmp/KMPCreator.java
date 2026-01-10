@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.kmp;
@@ -144,7 +144,7 @@ public class KMPCreator extends AbstractCreator<KMPCreatorUI>
                 final IGroup leftGroup = new DefaultGroup ();
                 final IGroup rightGroup = new DefaultGroup ();
                 for (final ISampleZone zone: group.getSampleZones ())
-                    if (zone.getPanning () <= -1)
+                    if (zone.getTuning () <= -1)
                         leftGroup.addSampleZone (zone);
                     else
                         rightGroup.addSampleZone (zone);

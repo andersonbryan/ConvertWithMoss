@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.ni.maschine.maschine1;
@@ -360,7 +360,7 @@ public class Maschine1Format implements IMaschineFormat
         for (final ISampleZone zone: multisampleSource.getGroups ().get (0).getSampleZones ())
         {
             // Tuning
-            zone.setTune (tuning + zone.getTune ());
+            zone.setTuning (tuning + zone.getTuning ());
             zone.setBendUp (pitchbend);
             zone.setBendDown (-pitchbend);
 
@@ -450,7 +450,7 @@ public class Maschine1Format implements IMaschineFormat
 
         zone.setGain (MaschinePresetAccessor.inputToDb (params.get ("zvol").floatValue));
         zone.setPanning (params.get ("zpan").floatValue);
-        zone.setTune (tuneToPitch (params.get ("ztun").floatValue));
+        zone.setTuning (tuneToPitch (params.get ("ztun").floatValue));
         return zone;
     }
 
@@ -902,8 +902,8 @@ public class Maschine1Format implements IMaschineFormat
             findParameterByName (newZoneTag, "zhvl").integerValue = zone.getVelocityHigh ();
 
             findParameterByName (newZoneTag, "zvol").floatValue = MaschinePresetAccessor.dbToInput (zone.getGain ());
-            findParameterByName (newZoneTag, "zpan").floatValue = (float) zone.getPanning ();
-            findParameterByName (newZoneTag, "ztun").floatValue = (float) pitchToTune (zone.getTune ());
+            findParameterByName (newZoneTag, "zpan").floatValue = (float) zone.getTuning ();
+            findParameterByName (newZoneTag, "ztun").floatValue = (float) pitchToTune (zone.getTuning ());
         }
     }
 

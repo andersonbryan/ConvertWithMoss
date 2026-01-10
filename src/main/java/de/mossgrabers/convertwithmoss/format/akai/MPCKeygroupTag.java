@@ -1,5 +1,5 @@
 // Written by Jürgen Moßgraber - mossgrabers.de
-// (c) 2019-2025
+// (c) 2019-2026
 // Licensed under LGPLv3 - http://www.gnu.org/licenses/lgpl-3.0.txt
 
 package de.mossgrabers.convertwithmoss.format.akai;
@@ -24,6 +24,8 @@ public class MPCKeygroupTag
 
     /** The file version element. */
     public static final String VERSION_FILE_VERSION                 = "File_Version";
+    /** The platform version element. */
+    public static final String VERSION_PLATFORM                     = "Platform";
 
     /** The program name element. */
     public static final String PROGRAM_NAME                         = "ProgramName";

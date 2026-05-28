@@ -276,9 +276,7 @@ public class MaschinePresetAccessor
             data.remove (X0D_FIRST_ZONE);
 
         // There are no groups, therefore, collect all sample zones
-        final List<ISampleZone> sampleZones = new ArrayList<> ();
-        for (final IGroup group: source.getNonEmptyGroups (true))
-            sampleZones.addAll (group.getSampleZones ());
+        final List<ISampleZone> sampleZones = source.getAllSampleZones (true);
 
         // Update the number of samples
         final int maxZones = sampleZones.size ();
@@ -287,10 +285,7 @@ public class MaschinePresetAccessor
         // Generate new zones using the template
         final List<byte []> newZones = new ArrayList<> ();
         for (int i = 0; i < maxZones; i++)
-        {
-            final ISampleZone sampleZone = sampleZones.get (i);
-            newZones.addAll (fillZone (i, maxZones, templateZone, sampleZone, safeSampleFolderName));
-        }
+            newZones.addAll (fillZone (i, maxZones, templateZone, sampleZones.get (i), safeSampleFolderName));
 
         // Insert all regenerated zones back in the correct position
         data.addAll (X0D_FIRST_ZONE, newZones);
@@ -426,7 +421,7 @@ public class MaschinePresetAccessor
         // If the modulation envelope was not used for the filter use it for pitch
         if (modEnvelope == null)
         {
-            final IEnvelopeModulator pitchModulator = firstSampleZone.getPitchModulator ();
+            final IEnvelopeModulator pitchModulator = firstSampleZone.getPitchEnvelopeModulator ();
             final double pitchModulationIntensity = pitchModulator.getDepth ();
             if (pitchModulationIntensity > 0)
             {
@@ -513,7 +508,7 @@ public class MaschinePresetAccessor
         MaschinePresetParameterArray.writeIntegers (X0D_ZONE_VELOCITY_HIGH, newZone, 0, velocityHigh, velocityHigh, 0, 0, 0);
 
         writeFloatValueRow (X0D_ZONE_GAIN, newZone, dbToInput (sampleZone.getGain ()));
-        writeFloatValueRow (X0D_ZONE_PANNING, newZone, (float) sampleZone.getTuning ());
+        writeFloatValueRow (X0D_ZONE_PANNING, newZone, (float) sampleZone.getPanning ());
         writeFloatValueRow (X0D_ZONE_TUNE, newZone, (float) sampleZone.getTuning ());
 
         newZone.set (X0D_ZONE_LAST_ROW, createLastRow (zoneIndex, maxZones, sampleZone));
@@ -819,7 +814,7 @@ public class MaschinePresetAccessor
                     pitchEnvelope.setSustainLevel (modulationSustainLevel);
                     pitchEnvelope.setReleaseTime (modulationReleaseTime);
 
-                    final IEnvelopeModulator pitchModulator = zone.getPitchModulator ();
+                    final IEnvelopeModulator pitchModulator = zone.getPitchEnvelopeModulator ();
                     pitchModulator.setDepth (pitchModulationIntensity);
                     pitchModulator.setSource (pitchEnvelope);
                 }
@@ -886,13 +881,13 @@ public class MaschinePresetAccessor
         // Unknown
         soundInfoIn.skipNBytes (11);
 
-        final String soundName = StreamUtils.readWithLengthUTF16 (soundInfoIn);
+        final String soundName = StreamUtils.readUtf16WithLength (soundInfoIn);
         if (!soundName.isBlank () && !"Sampler".equals (soundName))
             multisampleSource.setName (soundName);
-        final String soundAuthor = StreamUtils.readWithLengthUTF16 (soundInfoIn);
+        final String soundAuthor = StreamUtils.readUtf16WithLength (soundInfoIn);
         if (!soundAuthor.isBlank ())
             metadata.setCreator (soundAuthor);
-        final String soundCompany = StreamUtils.readWithLengthUTF16 (soundInfoIn);
+        final String soundCompany = StreamUtils.readUtf16WithLength (soundInfoIn);
         if (!soundCompany.isBlank ())
             metadata.setDescription (soundCompany);
 
@@ -913,7 +908,7 @@ public class MaschinePresetAccessor
         final int numLibraryInfo = (int) StreamUtils.readUnsigned32 (soundInfoIn, false);
         final List<String> libraryInfo = new ArrayList<> ();
         for (int i = 0; i < numLibraryInfo; i++)
-            libraryInfo.add (StreamUtils.readWithLengthUTF16 (soundInfoIn));
+            libraryInfo.add (StreamUtils.readUtf16WithLength (soundInfoIn));
 
         // Categories
         final int numCategoryPath = (int) StreamUtils.readUnsigned32 (soundInfoIn, false);
@@ -921,7 +916,7 @@ public class MaschinePresetAccessor
         String categoryPart = "";
         // We only use the last one which contains the full sub-categories path
         for (int i = 0; i < numCategoryPath; i++)
-            categoryPart = StreamUtils.readWithLengthUTF16 (soundInfoIn);
+            categoryPart = StreamUtils.readUtf16WithLength (soundInfoIn);
         final String [] categoryParts = categoryPart.split ("\\\\:");
         for (int i = categoryParts.length - 1; i >= 0; i--)
             if (!categoryParts[i].isBlank ())
@@ -939,8 +934,8 @@ public class MaschinePresetAccessor
         final Map<String, String> attributes = new HashMap<> ();
         for (int i = 0; i < numAttributes; i++)
         {
-            final String name = StreamUtils.readWithLengthUTF16 (soundInfoIn);
-            final String value = StreamUtils.readWithLengthUTF16 (soundInfoIn);
+            final String name = StreamUtils.readUtf16WithLength (soundInfoIn);
+            final String value = StreamUtils.readUtf16WithLength (soundInfoIn);
             attributes.put (name, value);
         }
     }
@@ -1028,7 +1023,7 @@ public class MaschinePresetAccessor
     {
         if (input <= 0.0f)
             return MIN_DB;
-        float db = GAIN * (float) Math.log10 (input / REFERENCE_DB);
+        final float db = GAIN * (float) Math.log10 (input / REFERENCE_DB);
         return Math.max (db, MIN_DB);
     }
 
@@ -1051,7 +1046,7 @@ public class MaschinePresetAccessor
     /**
      * Converts the given normalized value to milli-seconds. Tweaked for the attack part of the
      * envelope.
-     * 
+     *
      * @param v The normalized value in the range of [0..1]
      * @return The value in milli-seconds
      */
@@ -1073,7 +1068,7 @@ public class MaschinePresetAccessor
     /**
      * Converts the given milli-seconds to normalized value. Tweaked for the attack part of the
      * envelope.
-     * 
+     *
      * @param millis The value in milli-seconds
      * @return The normalized value in the range of [0..1]
      */
@@ -1091,7 +1086,7 @@ public class MaschinePresetAccessor
     /**
      * Converts the given normalized value to milli-seconds. Tweaked for the decay and release part
      * of the envelope.
-     * 
+     *
      * @param v The normalized value in the range of [0..1]
      * @return The value in milli-seconds
      */
@@ -1116,7 +1111,7 @@ public class MaschinePresetAccessor
     /**
      * Converts the given milli-seconds to normalized value. Tweaked for the decay and release part
      * of the envelope.
-     * 
+     *
      * @param millis The value in milli-seconds
      * @return The normalized value in the range of [0..1]
      */
@@ -1140,7 +1135,7 @@ public class MaschinePresetAccessor
     /**
      * Maps the normalized input value to frequency in Hz using exponential curve, does not match
      * 100% but very close.
-     * 
+     *
      * @param value The normalized value in the range of [0..1]
      * @return The frequency in the range of [43.7..19600] Hertz
      */
@@ -1153,7 +1148,7 @@ public class MaschinePresetAccessor
     /**
      * Maps the frequency in Hz to normalized input value using exponential curve, does not match
      * 100% but very close.
-     * 
+     *
      * @param frequency The frequency in the range of [43.7..19600] Hertz
      * @return The normalized value in the range of [0..1]
      */

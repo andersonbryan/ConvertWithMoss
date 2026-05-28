@@ -10,8 +10,13 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+import de.mossgrabers.convertwithmoss.core.algorithm.AudioSampleReducer;
+import de.mossgrabers.convertwithmoss.core.algorithm.MultiSampleReducer;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractCreator;
 import de.mossgrabers.convertwithmoss.core.creator.ICreator;
 import de.mossgrabers.convertwithmoss.core.detector.IDetector;
@@ -19,19 +24,33 @@ import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
 import de.mossgrabers.convertwithmoss.core.model.IGroup;
 import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
 import de.mossgrabers.convertwithmoss.core.model.implementation.DefaultEnvelope;
-import de.mossgrabers.convertwithmoss.file.CSVRenameFile;
 import de.mossgrabers.convertwithmoss.format.ableton.AbletonCreator;
 import de.mossgrabers.convertwithmoss.format.ableton.AbletonDetector;
-import de.mossgrabers.convertwithmoss.format.akai.MPCKeygroupCreator;
-import de.mossgrabers.convertwithmoss.format.akai.MPCKeygroupDetector;
+import de.mossgrabers.convertwithmoss.format.akai.akp.AkpDetector;
+import de.mossgrabers.convertwithmoss.format.akai.mesa.AkaiMesaDetector;
+import de.mossgrabers.convertwithmoss.format.akai.mpc.xpm.MPCKeygroupCreator;
+import de.mossgrabers.convertwithmoss.format.akai.mpc.xpm.MPCKeygroupDetector;
+import de.mossgrabers.convertwithmoss.format.akai.mpc.xty.XtyDetector;
+import de.mossgrabers.convertwithmoss.format.akai.mpc1000.AkaiMPC1000Detector;
+import de.mossgrabers.convertwithmoss.format.akai.mpc2000.AkaiMPC2000Detector;
+import de.mossgrabers.convertwithmoss.format.akai.mpc60.AkaiMPC60Detector;
+import de.mossgrabers.convertwithmoss.format.akai.s1000.AkaiS1000Detector;
+import de.mossgrabers.convertwithmoss.format.akai.s900.AkaiS900Detector;
 import de.mossgrabers.convertwithmoss.format.bitwig.BitwigMultisampleCreator;
 import de.mossgrabers.convertwithmoss.format.bitwig.BitwigMultisampleDetector;
+import de.mossgrabers.convertwithmoss.format.bliss.BlissCreator;
+import de.mossgrabers.convertwithmoss.format.bliss.BlissDetector;
 import de.mossgrabers.convertwithmoss.format.decentsampler.DecentSamplerCreator;
 import de.mossgrabers.convertwithmoss.format.decentsampler.DecentSamplerDetector;
 import de.mossgrabers.convertwithmoss.format.disting.DistingExCreator;
 import de.mossgrabers.convertwithmoss.format.disting.DistingExDetector;
+import de.mossgrabers.convertwithmoss.format.elektron.ElektronMultiCreator;
+import de.mossgrabers.convertwithmoss.format.elektron.ElektronMultiDetector;
+import de.mossgrabers.convertwithmoss.format.ensoniq.epsasr.EnsoniqEpsAsrDetector;
+import de.mossgrabers.convertwithmoss.format.ensoniq.mirage.MirageDetector;
 import de.mossgrabers.convertwithmoss.format.exs.EXS24Creator;
 import de.mossgrabers.convertwithmoss.format.exs.EXS24Detector;
+import de.mossgrabers.convertwithmoss.format.iso.IsoDetector;
 import de.mossgrabers.convertwithmoss.format.kmp.KMPCreator;
 import de.mossgrabers.convertwithmoss.format.kmp.KMPDetector;
 import de.mossgrabers.convertwithmoss.format.korgmultisample.KorgmultisampleCreator;
@@ -76,12 +95,8 @@ public class ConverterBackend
 
     private IDetector<?>                   detector;
     private ICreator<?>                    creator;
-    private File                           outputFolder;
-    private CSVRenameFile                  csvRenameFile;
-    private String                         libraryName;
-    private boolean                        wantsMultipleFiles;
+    private DetectSettings                 detectionSettings;
     private boolean                        onlyAnalyse;
-    private boolean                        createFolderStructure;
 
     private final List<IMultisampleSource> collectedPresetSources      = new ArrayList<> ();
     private final List<IPerformanceSource> collectedPerformanceSources = new ArrayList<> ();
@@ -96,16 +111,32 @@ public class ConverterBackend
     {
         this.notifier = notifier;
 
+        // Workaround for attribute limit of 200 which e.g. causes issues with TAL Sampler format
+        System.setProperty ("jdk.xml.elementAttributeLimit", "1000");
+
         this.detectors = new IDetector []
         {
             new BentoDetector (notifier),
             new Music1010Detector (notifier),
             new AbletonDetector (notifier),
+            new AkpDetector (notifier),
+            new AkaiMesaDetector (notifier),
             new MPCKeygroupDetector (notifier),
+            new XtyDetector (notifier),
+            new AkaiMPC60Detector (notifier),
+            new AkaiMPC1000Detector (notifier),
+            new AkaiMPC2000Detector (notifier),
+            new AkaiS900Detector (notifier),
+            new AkaiS1000Detector (notifier),
             new BitwigMultisampleDetector (notifier),
+            new BlissDetector (notifier),
             new TX16WxDetector (notifier),
             new DecentSamplerDetector (notifier),
             new DistingExDetector (notifier),
+            new ElektronMultiDetector (notifier),
+            new EnsoniqEpsAsrDetector (notifier),
+            new MirageDetector (notifier),
+            new IsoDetector (notifier),
             new KontaktDetector (notifier),
             new KMPDetector (notifier),
             new KorgmultisampleDetector (notifier),
@@ -127,9 +158,11 @@ public class ConverterBackend
             new AbletonCreator (notifier),
             new MPCKeygroupCreator (notifier),
             new BitwigMultisampleCreator (notifier),
+            new BlissCreator (notifier),
             new TX16WxCreator (notifier),
             new DecentSamplerCreator (notifier),
             new DistingExCreator (notifier),
+            new ElektronMultiCreator (notifier),
             new KontaktCreator (notifier),
             new KMPCreator (notifier),
             new KorgmultisampleCreator (notifier),
@@ -173,26 +206,16 @@ public class ConverterBackend
      *
      * @param detector The file detector
      * @param creator The file creator
-     * @param sourceFolder The folder where to start the detection process
-     * @param outputFolder Where to write the result to
-     * @param csvRenameFile If renaming is required
-     * @param libraryName The name to use in case that a library will be created
+     * @param detectionSettings The settings for the detection process
      * @param detectPerformances If true, performances are detected otherwise presets
-     * @param wantsMultipleFiles True, if all files should be returned at once
-     * @param createFolderStructure True, if the source folder structure should be replicated in the
-     *            output folder
      * @param onlyAnalyse True, if no files should be created
      */
-    public void detect (final IDetector<?> detector, final ICreator<?> creator, final File sourceFolder, final File outputFolder, final CSVRenameFile csvRenameFile, final String libraryName, final boolean detectPerformances, final boolean wantsMultipleFiles, final boolean createFolderStructure, final boolean onlyAnalyse)
+    public void detect (final IDetector<?> detector, final ICreator<?> creator, final DetectSettings detectionSettings, final boolean detectPerformances, final boolean onlyAnalyse)
     {
         this.detector = detector;
         this.creator = creator;
-        this.outputFolder = outputFolder;
-        this.csvRenameFile = csvRenameFile;
-        this.libraryName = libraryName;
-        this.wantsMultipleFiles = wantsMultipleFiles;
+        this.detectionSettings = detectionSettings;
         this.onlyAnalyse = onlyAnalyse;
-        this.createFolderStructure = createFolderStructure;
 
         this.collectedPresetSources.clear ();
         this.collectedPerformanceSources.clear ();
@@ -200,7 +223,7 @@ public class ConverterBackend
         this.notifier.log ("TITLE");
         this.notifier.log ("IDS_NOTIFY_DETECTING", detector.getName (), creator.getName ());
         this.creator.clearCancelled ();
-        this.detector.detect (sourceFolder, new MultisampleSourceConsumer (), new PerformanceSourceConsumer (), detectPerformances);
+        this.detector.detect (detectionSettings.sourceFolder, new MultisampleSourceConsumer (), new PerformanceSourceConsumer (), detectPerformances);
     }
 
 
@@ -226,13 +249,13 @@ public class ConverterBackend
             {
                 if (!this.collectedPresetSources.isEmpty ())
                 {
-                    final String name = this.getPresetLibraryName (this.collectedPresetSources, this.libraryName);
-                    this.creator.createPresetLibrary (this.outputFolder, this.collectedPresetSources, name);
+                    final String name = this.getPresetLibraryName (this.collectedPresetSources, this.detectionSettings.libraryName);
+                    this.creator.createPresetLibrary (this.detectionSettings.outputFolder, this.collectedPresetSources, name);
                 }
                 else if (!this.collectedPerformanceSources.isEmpty ())
                 {
-                    final String name = this.getPerformanceLibraryName (this.collectedPerformanceSources, this.libraryName);
-                    this.creator.createPerformanceLibrary (this.outputFolder, this.collectedPerformanceSources, name);
+                    final String name = this.getPerformanceLibraryName (this.collectedPerformanceSources, this.detectionSettings.libraryName);
+                    this.creator.createPerformanceLibrary (this.detectionSettings.outputFolder, this.collectedPerformanceSources, name);
                 }
             }
             catch (final IOException | RuntimeException | OutOfMemoryError ex)
@@ -249,11 +272,9 @@ public class ConverterBackend
         if (this.detector.isCancelled ())
             return;
 
-        ensureSafeSampleFileNames (multisampleSource);
-        this.applyRenaming (multisampleSource);
-        this.applyDefaultEnvelope (multisampleSource);
+        this.processSource (multisampleSource);
 
-        if (this.wantsMultipleFiles)
+        if (this.detectionSettings.wantsMultipleFiles)
         {
             if (!this.onlyAnalyse)
                 this.collectedPresetSources.add (multisampleSource);
@@ -271,7 +292,7 @@ public class ConverterBackend
 
         try
         {
-            final File multisampleOutputFolder = calcOutputFolder (this.outputFolder, multisampleSource.getSubPath (), this.createFolderStructure);
+            final File multisampleOutputFolder = calcOutputFolder (this.detectionSettings.outputFolder, multisampleSource.getSubPath (), this.detectionSettings.createFolderStructure);
             this.creator.createPreset (multisampleOutputFolder, multisampleSource);
         }
         catch (final NoSuchFileException | FileNotFoundException ex)
@@ -294,16 +315,10 @@ public class ConverterBackend
         if (instrumentSources.isEmpty ())
             return;
 
-        IMultisampleSource multisampleSource;
         for (final IInstrumentSource instrumentSource: instrumentSources)
-        {
-            multisampleSource = instrumentSource.getMultisampleSource ();
-            ensureSafeSampleFileNames (multisampleSource);
-            this.applyRenaming (multisampleSource);
-            this.applyDefaultEnvelope (multisampleSource);
-        }
+            this.processSource (instrumentSource.getMultisampleSource ());
 
-        if (this.wantsMultipleFiles)
+        if (this.detectionSettings.wantsMultipleFiles)
         {
             if (!this.onlyAnalyse)
                 this.collectedPerformanceSources.add (performanceSource);
@@ -319,7 +334,7 @@ public class ConverterBackend
 
         try
         {
-            final File multisampleOutputFolder = calcOutputFolder (this.outputFolder, instrumentSources.get (0).getMultisampleSource ().getSubPath (), this.createFolderStructure);
+            final File multisampleOutputFolder = calcOutputFolder (this.detectionSettings.outputFolder, instrumentSources.get (0).getMultisampleSource ().getSubPath (), this.detectionSettings.createFolderStructure);
             this.creator.createPerformance (multisampleOutputFolder, performanceSource);
         }
         catch (final NoSuchFileException | FileNotFoundException ex)
@@ -329,6 +344,82 @@ public class ConverterBackend
         catch (final IOException | RuntimeException ex)
         {
             this.notifier.logError ("IDS_NOTIFY_SAVE_FAILED", ex);
+        }
+    }
+
+
+    private void processSource (final IMultisampleSource multisampleSource)
+    {
+        ensureSafeSampleFileNames (multisampleSource);
+        this.processSamples (multisampleSource);
+        this.applyRenaming (multisampleSource);
+        this.applyDefaultEnvelope (multisampleSource);
+    }
+
+
+    private void processSamples (final IMultisampleSource multisampleSource)
+    {
+        if (this.onlyAnalyse || !this.detectionSettings.needsProcessing ())
+            return;
+
+        this.notifier.log ("IDS_PROCESSING_PROCESS");
+        try
+        {
+            final List<IGroup> groups = multisampleSource.getNonEmptyGroups (false);
+
+            ///////////////////////////////////////////////////////////////////////////////////
+            // Combine split-mono samples to stereo samples if necessary for further processing
+
+            final boolean hasMaximumNumberOfSamples = this.detectionSettings.maxNumberOfSamples > 0;
+            if ((hasMaximumNumberOfSamples || this.detectionSettings.enableMakeMono) && ZoneChannels.detectChannelConfiguration (groups) == ZoneChannels.SPLIT_STEREO)
+            {
+                this.notifier.log ("IDS_PROCESSING_COMBINE_TO_STEREO");
+                final Optional<IGroup> stereoGroup = ZoneChannels.combineSplitStereo (groups);
+                if (stereoGroup.isPresent ())
+                {
+                    groups.clear ();
+                    groups.add (stereoGroup.get ());
+                }
+                else
+                    this.notifier.logError ("IDS_NOTIFY_NOT_COMBINED_TO_STEREO");
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////
+            // Reduce the number of samples if necessary
+
+            if (hasMaximumNumberOfSamples && MultiSampleReducer.reduce (groups, this.detectionSettings.maxNumberOfSamples) > 0)
+            {
+                this.notifier.log ("IDS_PROCESSING_REDUCE_SAMPLES", Integer.toString (this.detectionSettings.maxNumberOfSamples));
+                final List<IGroup> finalGroups = new ArrayList<> ();
+                for (final IGroup group: groups)
+                    if (!group.getSampleZones ().isEmpty ())
+                        finalGroups.add (group);
+                groups.clear ();
+                groups.addAll (finalGroups);
+                this.notifier.log ("IDS_NOTIFY_REDUCED_TO_NUM_SAMPLES", Integer.toString (this.detectionSettings.maxNumberOfSamples));
+            }
+            multisampleSource.setGroups (groups);
+
+            final List<ISampleZone> sampleZones = new ArrayList<> ();
+            for (final IGroup group: groups)
+                sampleZones.addAll (group.getSampleZones ());
+
+            if (this.detectionSettings.enableMakeMono)
+                this.notifier.log ("IDS_PROCESSING_MAKE_MONO");
+            if (this.detectionSettings.enableTrimSample)
+                this.notifier.log ("IDS_PROCESSING_TRIM");
+            if (this.detectionSettings.reduceBitDepth > 0)
+                this.notifier.log ("IDS_PROCESSING_REDUCE_BIT_DEPTH_TO", Integer.toString (this.detectionSettings.reduceBitDepth));
+            if (this.detectionSettings.reduceFrequency > 0)
+                this.notifier.log ("IDS_PROCESSING_REDUCE_FREQUENCY_TO", Integer.toString (this.detectionSettings.reduceFrequency));
+            if (this.detectionSettings.enableNormalize)
+                this.notifier.log ("IDS_PROCESSING_NORMALIZING");
+            this.notifier.log ("IDS_NOTIFY_LINE_FEED");
+            AudioSampleReducer.reduceSamples (sampleZones, this.detectionSettings.enableMakeMono, this.detectionSettings.enableTrimSample, this.detectionSettings.reduceBitDepth, this.detectionSettings.reduceFrequency, this.detectionSettings.enableNormalize);
+        }
+        catch (final IOException | UnsupportedAudioFileException ex)
+        {
+            this.notifier.logError ("IDS_NOTIFY_COULD_NOT_RESAMPLE", ex);
         }
     }
 
@@ -378,11 +469,11 @@ public class ConverterBackend
      */
     private void applyRenaming (final IMultisampleSource multisampleSource)
     {
-        if (this.csvRenameFile == null || this.csvRenameFile.isEmpty ())
+        if (this.detectionSettings.csvRenameFile == null || this.detectionSettings.csvRenameFile.isEmpty ())
             return;
 
         final String sourceName = multisampleSource.getName ();
-        final String targetName = this.csvRenameFile.getMapping (sourceName);
+        final String targetName = this.detectionSettings.csvRenameFile.getMapping (sourceName);
         if (targetName != null)
         {
             this.notifier.log ("IDS_NOTIFY_RENAMING_SOURCE_TO", sourceName, targetName);
@@ -420,14 +511,14 @@ public class ConverterBackend
 
     private String getPresetLibraryName (final List<IMultisampleSource> multisampleSources, final String libraryName)
     {
-        final String name = this.wantsMultipleFiles && !libraryName.isEmpty () ? libraryName : multisampleSources.get (0).getName ();
+        final String name = this.detectionSettings.wantsMultipleFiles && !libraryName.isEmpty () ? libraryName : multisampleSources.get (0).getName ();
         return AbstractCreator.createSafeFilename (name);
     }
 
 
     private String getPerformanceLibraryName (final List<IPerformanceSource> performanceSources, final String libraryName)
     {
-        final String name = this.wantsMultipleFiles && !libraryName.isEmpty () ? libraryName : performanceSources.get (0).getName ();
+        final String name = this.detectionSettings.wantsMultipleFiles && !libraryName.isEmpty () ? libraryName : performanceSources.get (0).getName ();
         return AbstractCreator.createSafeFilename (name);
     }
 

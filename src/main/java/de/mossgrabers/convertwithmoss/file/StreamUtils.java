@@ -34,7 +34,59 @@ public class StreamUtils
 
 
     /**
-     * Reads and converts 2 bytes to an signed integer.
+     * Reads and converts 1 byte to a signed integer. Throws an IOException on EOF.
+     *
+     * @param in The input stream
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readSigned8 (final InputStream in) throws IOException
+    {
+        final int value = in.read ();
+        if (value == -1)
+            throw new IOException ("Unexpected end of stream");
+        // Converts to signed byte, then widens to int
+        return (byte) value;
+    }
+
+
+    /**
+     * Reads and converts 1 byte to a signed integer. Drops the following byte. Throws an
+     * IOException on EOF.
+     *
+     * @param in The input stream
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readSigned8FromWord (final InputStream in) throws IOException
+    {
+        int result = readSigned8 (in);
+        in.skipNBytes (1);
+        return result;
+    }
+
+
+    /**
+     * Reads and converts 1 byte to an unsigned integer. Drops the following byte. Throws an
+     * IOException on EOF.
+     *
+     * @param in The input stream
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readUnsigned8FromWord (final InputStream in) throws IOException
+    {
+        int result = readSigned8 (in) & 0XFF;
+        in.skipNBytes (1);
+        return result;
+    }
+
+
+    /**
+     * Reads and converts 2 bytes to a signed integer.
      *
      * @param in The input stream
      * @param isBigEndian True if bytes are stored big-endian otherwise little-endian
@@ -51,7 +103,7 @@ public class StreamUtils
 
 
     /**
-     * Reads and converts 2 bytes to an signed integer from the given array.
+     * Reads and converts 2 bytes to a signed integer from the given array.
      *
      * @param array The input array
      * @param offset The offset into the array
@@ -87,7 +139,7 @@ public class StreamUtils
 
 
     /**
-     * Reads and converts 2 bytes to an signed integer.
+     * Reads and converts 2 bytes to a signed integer.
      *
      * @param fileAccess The random access file to read from
      * @param isBigEndian True if bytes are stored big-endian otherwise little-endian
@@ -150,6 +202,53 @@ public class StreamUtils
     public static void writeSigned16 (final OutputStream out, final int value, final boolean isBigEndian) throws IOException
     {
         writeUnsigned16 (out, value, isBigEndian);
+    }
+
+
+    /**
+     * Reads and converts 3 bytes to an unsigned integer.
+     *
+     * @param fileAccess The random access file to read from
+     * @param isBigEndian True if bytes are stored big-endian
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readUnsigned24 (final RandomAccessFile fileAccess, final boolean isBigEndian) throws IOException
+    {
+        return readUnsigned24 (readNBytes (fileAccess, 3), isBigEndian);
+    }
+
+
+    /**
+     * Reads and converts 3 bytes to an unsigned integer.
+     *
+     * @param in The input stream
+     * @param isBigEndian True if bytes are stored big-endian
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readUnsigned24 (final InputStream in, final boolean isBigEndian) throws IOException
+    {
+        return readUnsigned24 (in.readNBytes (3), isBigEndian);
+    }
+
+
+    /**
+     * Converts 3 bytes to an unsigned integer.
+     *
+     * @param bytes The 3 bytes to convert
+     * @param isBigEndian True if bytes are stored big-endian
+     * @return The converted integer
+     * @throws IOException The stream has been closed and the contained input stream does not
+     *             support reading after close, or another I/O error occurs.
+     */
+    public static int readUnsigned24 (final byte [] bytes, final boolean isBigEndian) throws IOException
+    {
+        if (isBigEndian)
+            return (bytes[2] & 0xFF) << 8 | (bytes[1] & 0xFF) << 16 | (bytes[0] & 0xFF) << 24;
+        return bytes[0] & 0xFF | (bytes[1] & 0xFF) << 8 | (bytes[2] & 0xFF) << 16;
     }
 
 
@@ -425,6 +524,21 @@ public class StreamUtils
 
 
     /**
+     * Converts a number of bytes to an unsigned integer with most significant bytes first.
+     *
+     * @param data The data to convert
+     * @return The converted integer
+     */
+    public static int fromBytesBE (final byte [] data)
+    {
+        int number = 0;
+        for (int i = data.length - 1; i >= 0; i--)
+            number |= (data[i] & 0xFF) << 8 * i;
+        return number;
+    }
+
+
+    /**
      * Reads and converts a 4 byte float value.
      *
      * @param in The input stream to read from
@@ -565,18 +679,18 @@ public class StreamUtils
      */
     public static int readVariableLengthNumberLE (final InputStream in) throws IOException
     {
-        int length = in.read ();
+        final int length = in.read ();
         if (length < 0 || length > 4)
             throw new IOException ("Invalid byte length: " + length);
 
         int result = 0;
         for (int i = 0; i < length; i++)
         {
-            int b = in.read ();
+            final int b = in.read ();
             if (b == -1)
                 throw new IOException ("Unexpected end of stream");
             // Little-endian
-            result |= (b & 0xFF) << (8 * i);
+            result |= (b & 0xFF) << 8 * i;
         }
 
         return result;
@@ -586,7 +700,7 @@ public class StreamUtils
     /**
      * Writes a variable-length little-endian integer to an OutputStream. The first byte indicates
      * the number of following bytes (0..4).
-     * 
+     *
      * @param out The output stream to write to
      * @param value The integer to write
      * @throws IOException If an I/O error occurs
@@ -598,7 +712,7 @@ public class StreamUtils
             length++;
         out.write (length);
         for (int i = 0; i < length; i++)
-            out.write ((value >>> (8 * i)) & 0xFF);
+            out.write (value >>> 8 * i & 0xFF);
     }
 
 
@@ -609,13 +723,9 @@ public class StreamUtils
      * @return The read text
      * @throws IOException Could not read
      */
-    public static String readUTF8 (final InputStream in) throws IOException
+    public static String readUtf8 (final InputStream in) throws IOException
     {
-        String content = new String (in.readAllBytes (), StandardCharsets.UTF_8);
-        // Remove UTF-8 BOM
-        if (content.startsWith ("\uFEFF"))
-            content = content.substring (1);
-        return content;
+        return readUtf8 (in.readAllBytes ());
     }
 
 
@@ -626,236 +736,41 @@ public class StreamUtils
      * @return The read text
      * @throws IOException Could not read
      */
-    public static String readUTF8 (final ByteBuffer buffer) throws IOException
+    public static String readUtf8 (final ByteBuffer buffer) throws IOException
     {
-        byte [] bytes = new byte [buffer.remaining ()];
-        buffer.get (bytes);
-        String content = new String (bytes, StandardCharsets.UTF_8);
+        final byte [] data = new byte [buffer.remaining ()];
+        buffer.get (data);
+        return readUtf8 (data);
+    }
+
+
+    /**
+     * Reads all bytes from a buffer and interprets it as UTF-8 text.
+     *
+     * @param data The bytes to interpret as UTF-8
+     * @return The UTF-8 text
+     * @throws IOException Could not read
+     */
+    private static String readUtf8 (final byte [] data) throws IOException
+    {
+        final String content = new String (data, StandardCharsets.UTF_8);
         // Remove UTF-8 BOM
-        if (content.startsWith ("\uFEFF"))
-            content = content.substring (1);
-        return content;
+        return content.startsWith ("\uFEFF") ? content.substring (1) : content;
     }
 
 
     /**
-     * Reads a number of bytes from an input stream and interprets it as ASCII text.
+     * Reads an UTF-16 string.
      *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @return The read text
+     * @param in The input stream to read from
+     * @param length The number of 2-byte characters to read
+     * @return The read string
+     * @param isBigEndian True if bytes are stored big-endian otherwise little-endian
      * @throws IOException Could not read
      */
-    public static String readASCII (final InputStream in, final int length) throws IOException
+    public static String readUtf16 (final InputStream in, final int length, final boolean isBigEndian) throws IOException
     {
-        return readASCII (in, length, StandardCharsets.US_ASCII, false);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @param reverse Reverses the text if true
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final InputStream in, final int length, final boolean reverse) throws IOException
-    {
-        return readASCII (in, length, StandardCharsets.US_ASCII, reverse);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @param charset The character set to use
-     * @param reverse Reverses the text if true
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final InputStream in, final int length, final Charset charset, final boolean reverse) throws IOException
-    {
-        final byte [] buffer = in.readNBytes (length);
-        if (buffer.length != length)
-            throw new IOException (Functions.getMessage ("IDS_NOTIFY_ASCII_LENGTH_TOO_SHORT", Integer.toBinaryString (length), Integer.toBinaryString (buffer.length)));
-        if (reverse)
-            reverseArray (buffer);
-        return new String (buffer, charset);
-    }
-
-
-    /**
-     * Reads bytes from an input stream until a zero appears and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readNullTerminatedASCII (final InputStream in) throws IOException
-    {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream ();
-        int b;
-        while ((b = in.read ()) > 0)
-            out.write (b);
-        return new String (out.toByteArray (), StandardCharsets.US_ASCII);
-    }
-
-
-    /**
-     * Writes the bytes of an ASCII text and appends them with a null byte.
-     *
-     * @param out The stream to write to
-     * @param text The text to write
-     * @throws IOException Could not write
-     */
-    public static void writeNullTerminatedASCII (final OutputStream out, final String text) throws IOException
-    {
-        out.write (text.getBytes (StandardCharsets.US_ASCII));
-        out.write (0);
-    }
-
-
-    /**
-     * Reads bytes from an input stream until a zero appears or the maximum length is reached and
-     * interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param maxLength The maximum number of ASCII characters to read
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readNullTerminatedASCIIMax (final InputStream in, final int maxLength) throws IOException
-    {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream ();
-        int b;
-        while ((b = in.read ()) != 0)
-        {
-            out.write (b);
-            if (out.size () == maxLength)
-                break;
-        }
-        return new String (out.toByteArray (), StandardCharsets.US_ASCII);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final DataInput in, final int length) throws IOException
-    {
-        return readASCII (in, length, StandardCharsets.US_ASCII);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @param reverse Reverses the text if true
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final DataInput in, final int length, final boolean reverse) throws IOException
-    {
-        return readASCII (in, length, StandardCharsets.US_ASCII, reverse);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @param charset The character set to use
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final DataInput in, final int length, final Charset charset) throws IOException
-    {
-        return readASCII (in, length, charset, false);
-    }
-
-
-    /**
-     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
-     *
-     * @param in The stream to read from
-     * @param length The length of the text
-     * @param charset The character set to use
-     * @param reverse Reverses the text if true
-     * @return The read text
-     * @throws IOException Could not read
-     */
-    public static String readASCII (final DataInput in, final int length, final Charset charset, final boolean reverse) throws IOException
-    {
-        final byte [] buffer = new byte [length];
-        in.readFully (buffer);
-        if (reverse)
-            reverseArray (buffer);
-        return new String (buffer, charset);
-    }
-
-
-    /**
-     * Writes an ASCII text to an output stream. If it is shorter than the given length it is
-     * appended with zeroes.
-     *
-     * @param out The stream to write to
-     * @param text The text to write
-     * @param length The length of the text
-     * @throws IOException Could not write
-     */
-    public static void writeASCII (final OutputStream out, final String text, final int length) throws IOException
-    {
-        writeASCII (out, text, length, false);
-    }
-
-
-    /**
-     * Writes an ASCII text to an output stream. If it is shorter than the given length it is
-     * appended with zeroes.
-     *
-     * @param out The stream to write to
-     * @param text The text to write
-     * @param length The length of the text
-     * @param reverse Reverses the text if true
-     * @throws IOException Could not write
-     */
-    public static void writeASCII (final OutputStream out, final String text, final int length, final boolean reverse) throws IOException
-    {
-        final byte [] textData = text.getBytes (StandardCharsets.US_ASCII);
-        final byte [] buffer = new byte [length];
-        Arrays.fill (buffer, (byte) 0);
-        System.arraycopy (textData, 0, buffer, 0, Math.min (textData.length, length));
-        if (reverse)
-            reverseArray (buffer);
-        out.write (buffer);
-    }
-
-
-    /**
-     * Reverses the content of the given array.
-     *
-     * @param buffer The array
-     */
-    public static void reverseArray (final byte [] buffer)
-    {
-        for (int i = 0; i < buffer.length / 2; i++)
-        {
-            final byte temp = buffer[i];
-            buffer[i] = buffer[buffer.length - i - 1];
-            buffer[buffer.length - i - 1] = temp;
-        }
+        return readUtf16 (in.readNBytes (2 * length), isBigEndian);
     }
 
 
@@ -866,7 +781,7 @@ public class StreamUtils
      * @return The read string
      * @param isBigEndian True if bytes are stored big-endian otherwise little-endian
      */
-    public static String readUTF16 (final byte [] data, final boolean isBigEndian)
+    public static String readUtf16 (final byte [] data, final boolean isBigEndian)
     {
         final StringBuilder sb = new StringBuilder (data.length / 2);
 
@@ -894,9 +809,9 @@ public class StreamUtils
      * @return The read string
      * @throws IOException Could not read the string
      */
-    public static String readWithLengthUTF16 (final InputStream in) throws IOException
+    public static String readUtf16WithLength (final InputStream in) throws IOException
     {
-        return readWithLengthUTF16 (in, false);
+        return readUtf16WithLength (in, false);
     }
 
 
@@ -909,12 +824,11 @@ public class StreamUtils
      * @return The read string
      * @throws IOException Could not read the string
      */
-    public static String readWithLengthUTF16 (final InputStream in, final boolean isBigEndian) throws IOException
+    public static String readUtf16WithLength (final InputStream in, final boolean isBigEndian) throws IOException
     {
         final int size = (int) readUnsigned32 (in, isBigEndian);
         final byte [] content = in.readNBytes (size * 2);
         if (isBigEndian)
-        {
             for (int i = 0; i < size; i++)
             {
                 final int pos = i * 2;
@@ -922,7 +836,6 @@ public class StreamUtils
                 content[pos] = content[pos + 1];
                 content[pos + 1] = store;
             }
-        }
         return new String (content, StandardCharsets.UTF_16LE);
     }
 
@@ -935,10 +848,230 @@ public class StreamUtils
      * @param text The read string
      * @throws IOException Could not read the string
      */
-    public static void writeWithLengthUTF16 (final OutputStream out, final String text) throws IOException
+    public static void writeUtf16WithLength (final OutputStream out, final String text) throws IOException
     {
         writeUnsigned32 (out, text.length (), false);
         out.write (text.getBytes (StandardCharsets.UTF_16LE));
+    }
+
+
+    /**
+     * Reads a number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final InputStream in, final int length) throws IOException
+    {
+        return readAscii (in, length, StandardCharsets.US_ASCII, false);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @param reverse Reverses the text if true
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final InputStream in, final int length, final boolean reverse) throws IOException
+    {
+        return readAscii (in, length, StandardCharsets.US_ASCII, reverse);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @param charset The character set to use
+     * @param reverse Reverses the text if true
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final InputStream in, final int length, final Charset charset, final boolean reverse) throws IOException
+    {
+        final byte [] buffer = in.readNBytes (length);
+        if (buffer.length != length)
+            throw new IOException (Functions.getMessage ("IDS_NOTIFY_ASCII_LENGTH_TOO_SHORT", Integer.toBinaryString (length), Integer.toBinaryString (buffer.length)));
+        if (reverse)
+            reverseArray (buffer);
+        return new String (buffer, charset);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final DataInput in, final int length) throws IOException
+    {
+        return readAscii (in, length, StandardCharsets.US_ASCII);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @param reverse Reverses the text if true
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final DataInput in, final int length, final boolean reverse) throws IOException
+    {
+        return readAscii (in, length, StandardCharsets.US_ASCII, reverse);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @param charset The character set to use
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final DataInput in, final int length, final Charset charset) throws IOException
+    {
+        return readAscii (in, length, charset, false);
+    }
+
+
+    /**
+     * Reads a fixed number of bytes from an input stream and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text
+     * @param charset The character set to use
+     * @param reverse Reverses the text if true
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAscii (final DataInput in, final int length, final Charset charset, final boolean reverse) throws IOException
+    {
+        final byte [] buffer = new byte [length];
+        in.readFully (buffer);
+        if (reverse)
+            reverseArray (buffer);
+        return new String (buffer, charset);
+    }
+
+
+    /**
+     * Reads all ASCII characters up to the given stop byte.
+     * 
+     * @param buffer The buffer to read from
+     * @param stopByte The byte to stop at
+     * @return The read ASCII text
+     */
+    public static String readAscii (final ByteBuffer buffer, final byte stopByte)
+    {
+        final StringBuilder sb = new StringBuilder ();
+        while (buffer.hasRemaining ())
+        {
+            final byte b = buffer.get ();
+            if (b == stopByte)
+                break;
+            sb.append ((char) b);
+        }
+        return sb.toString ();
+    }
+
+
+    /**
+     * Writes an ASCII text to an output stream. If it is shorter than the given length it is
+     * appended with zeroes.
+     *
+     * @param out The stream to write to
+     * @param text The text to write
+     * @param length The length of the text
+     * @param reverse Reverses the text if true
+     * @throws IOException Could not write
+     */
+    public static void writeAscii (final OutputStream out, final String text, final int length, final boolean reverse) throws IOException
+    {
+        final byte [] textData = text.getBytes (StandardCharsets.US_ASCII);
+        final byte [] buffer = new byte [length];
+        Arrays.fill (buffer, (byte) 0);
+        System.arraycopy (textData, 0, buffer, 0, Math.min (textData.length, length));
+        if (reverse)
+            reverseArray (buffer);
+        out.write (buffer);
+    }
+
+
+    /**
+     * Reads bytes from an input stream until a zero appears and interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAsciiNullTerminated (final InputStream in) throws IOException
+    {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream ();
+        int b;
+        while ((b = in.read ()) > 0)
+            out.write (b);
+        return new String (out.toByteArray (), StandardCharsets.US_ASCII);
+    }
+
+
+    /**
+     * Reads bytes from an input stream until a zero appears or the maximum length is reached and
+     * interprets it as ASCII text.
+     *
+     * @param in The stream to read from
+     * @param maxLength The maximum number of ASCII characters to read
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAsciiNullTerminatedMax (final InputStream in, final int maxLength) throws IOException
+    {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream ();
+        int b;
+        while ((b = in.read ()) != 0)
+        {
+            out.write (b);
+            if (out.size () == maxLength)
+                break;
+        }
+        return new String (out.toByteArray (), StandardCharsets.US_ASCII);
+    }
+
+
+    /**
+     * Reads a fixed number of ASCII characters from an input stream. Only the odd indices contain
+     * an ASCII character, each 2nd byte is null. Which means that twice the number of bytes for
+     * each character are read.
+     *
+     * @param in The stream to read from
+     * @param length The length of the text (reads double the number bytes!)
+     * @return The read text
+     * @throws IOException Could not read
+     */
+    public static String readAsciiLoByte (final InputStream in, final int length) throws IOException
+    {
+        final int len = 2 * length;
+        final byte [] buffer = in.readNBytes (len);
+        if (buffer.length != len)
+            throw new IOException (Functions.getMessage ("IDS_NOTIFY_ASCII_LENGTH_TOO_SHORT", Integer.toBinaryString (length), Integer.toBinaryString (buffer.length)));
+        final byte [] characters = new byte [length];
+        for (int i = 0; i < length; i++)
+            characters[i] = buffer[2 * i];
+        return new String (characters, StandardCharsets.US_ASCII);
     }
 
 
@@ -949,7 +1082,7 @@ public class StreamUtils
      * @return The read ASCII string
      * @throws IOException Could not read
      */
-    public static String readWith1ByteLengthAscii (final InputStream in) throws IOException
+    public static String readAsciiWith1ByteLength (final InputStream in) throws IOException
     {
         final int blocklength = in.read ();
         if (blocklength < 0)
@@ -960,13 +1093,42 @@ public class StreamUtils
 
 
     /**
+     * Writes an ASCII text to an output stream. If it is shorter than the given length it is
+     * appended with zeroes.
+     *
+     * @param out The stream to write to
+     * @param text The text to write
+     * @param length The length of the text
+     * @throws IOException Could not write
+     */
+    public static void writeAscii (final OutputStream out, final String text, final int length) throws IOException
+    {
+        writeAscii (out, text, length, false);
+    }
+
+
+    /**
+     * Writes the bytes of an ASCII text and appends them with a null byte.
+     *
+     * @param out The stream to write to
+     * @param text The text to write
+     * @throws IOException Could not write
+     */
+    public static void writeAsciiNullTerminated (final OutputStream out, final String text) throws IOException
+    {
+        out.write (text.getBytes (StandardCharsets.US_ASCII));
+        out.write (0);
+    }
+
+
+    /**
      * Writes an ASCII string. The first byte indicates the length of the string.
      *
      * @param out The output stream to write to
      * @param text The ASCII string to write
      * @throws IOException Could not write
      */
-    public static void writeWith1ByteLengthAscii (final OutputStream out, final String text) throws IOException
+    public static void writeAsciiWith1ByteLength (final OutputStream out, final String text) throws IOException
     {
         out.write (text.length ());
         out.write (text.getBytes ());
@@ -980,7 +1142,7 @@ public class StreamUtils
      * @return The read ASCII string
      * @throws IOException Could not read
      */
-    public static String readWith4ByteLengthAscii (final InputStream in) throws IOException
+    public static String readAsciiWith4ByteLength (final InputStream in) throws IOException
     {
         final int blockLength = (int) StreamUtils.readUnsigned32 (in, false);
         try
@@ -993,6 +1155,22 @@ public class StreamUtils
         catch (final IllegalArgumentException ex)
         {
             throw new IOException (ex);
+        }
+    }
+
+
+    /**
+     * Reverses the content of the given array.
+     *
+     * @param buffer The array
+     */
+    public static void reverseArray (final byte [] buffer)
+    {
+        for (int i = 0; i < buffer.length / 2; i++)
+        {
+            final byte temp = buffer[i];
+            buffer[i] = buffer[buffer.length - i - 1];
+            buffer[buffer.length - i - 1] = temp;
         }
     }
 
@@ -1163,6 +1341,24 @@ public class StreamUtils
 
 
     /**
+     * Read exactly N bytes.
+     *
+     * @param buffer The buffer to read from
+     * @param offset The offset from which to start reading
+     * @param numBytes The number of bytes to read
+     * @return The read bytes
+     * @throws IOException Could not read the bytes
+     */
+    public static byte [] readNBytes (final ByteBuffer buffer, final int offset, final int numBytes) throws IOException
+    {
+        buffer.position (offset);
+        final byte [] data = new byte [numBytes];
+        buffer.get (data);
+        return data;
+    }
+
+
+    /**
      * Reads one byte and then moves the file pointer back to the beginning of the read.
      *
      * @param fileAccess The random access file to read from
@@ -1207,5 +1403,20 @@ public class StreamUtils
     {
         for (int i = 0; i < count; i++)
             out.write (0);
+    }
+
+
+    /**
+     * Checks if the given data array only contains zeros.
+     *
+     * @param data The data to check
+     * @return True if empty
+     */
+    public static boolean onlyZeros (final byte [] data)
+    {
+        for (final byte element: data)
+            if (element != 0)
+                return false;
+        return true;
     }
 }

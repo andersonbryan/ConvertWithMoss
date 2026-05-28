@@ -19,11 +19,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
+import de.mossgrabers.convertwithmoss.core.DetectSettings;
 import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractCreator;
 import de.mossgrabers.convertwithmoss.core.creator.DestinationAudioFormat;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
@@ -63,10 +64,12 @@ import de.mossgrabers.tools.ui.Functions;
  */
 public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
 {
+    private static final int                                    MAX_PERFORMANCES         = 128;
+
     private static final DestinationAudioFormat                 DESTINATION_AUDIO_FORMAT = new DestinationAudioFormat (new int []
     {
         16
-    }, -1, false);
+    }, 44100, true);
 
     private static final Map<YamahaYsfcFileFormat, byte []>     PERFORMANCE_TEMPLATES_1  = new EnumMap<> (YamahaYsfcFileFormat.class);
     private static final Map<YamahaYsfcFileFormat, byte []>     PERFORMANCE_TEMPLATES_8  = new EnumMap<> (YamahaYsfcFileFormat.class);
@@ -195,7 +198,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
 
         this.storeMultisamples (multisampleSources, multiFile, format);
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -226,7 +229,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
             ysfcFile.write (out);
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -248,10 +251,18 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
 
         // Numbering is across all(!) samples
         final LibraryCounters counters = new LibraryCounters ();
+        int performanceCounter = 0;
         for (int performanceIndex = 0; performanceIndex < performanceSources.size (); performanceIndex++)
         {
             final IPerformanceSource performanceSource = performanceSources.get (performanceIndex);
-            this.addPerformance (performanceSource, format, ysfcFile, performanceIndex, counters);
+            this.addPerformance (performanceSource, format, ysfcFile, performanceCounter, counters);
+            performanceCounter++;
+
+            if (performanceIndex > MAX_PERFORMANCES)
+            {
+                this.notifier.logError ("IDS_YSFC_TOO_MANY_PERFORMANCES", Integer.toString (performanceCounter));
+                return;
+            }
         }
 
         try (final FileOutputStream out = new FileOutputStream (multiFile))
@@ -259,7 +270,18 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
             ysfcFile.write (out);
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkProcessingCompatibility (final DetectSettings detectSettings)
+    {
+        if (detectSettings.reduceBitDepth <= 0 || detectSettings.reduceBitDepth == 16)
+            return true;
+        this.notifier.log ("IDS_PROCESSING_REDUCE_BIT_DEPTH_NOT_SUPPORTED", Integer.toString (detectSettings.reduceBitDepth), "16");
+        return false;
     }
 
 
@@ -285,6 +307,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
             this.createPerformancesForMultiSources (multisampleSources, format, ysfcFile);
         else
             this.createKeyBanksForMultiSources (multisampleSources, format, ysfcFile);
+        this.progress.notifyDone ();
 
         try (final FileOutputStream out = new FileOutputStream (multiFile))
         {
@@ -372,18 +395,27 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
         final int categoryID = getCategoryIndex (multisampleSources.get (0).getMetadata ());
 
         // Create one performance for each multi-sample source
-        for (int i = 0; i < multisampleSources.size (); i++)
+        int performanceIndex = 0;
+        final int numMultisampleSources = multisampleSources.size ();
+        for (int i = 0; i < numMultisampleSources; i++)
         {
             final YamahaYsfcPerformance performance = new YamahaYsfcPerformance (PERFORMANCE_TEMPLATES_1.get (format), format, YsfcFile.parseVersion (format.getMaxVersionStr ()));
 
             final IMultisampleSource multisampleSource = multisampleSources.get (i);
-            final String multisampleName = StringUtils.fixASCII (multisampleSource.getName ());
+            final String multisampleName = StringUtils.optimizeName (StringUtils.fixASCII (multisampleSource.getName ()), 20);
             performance.setName (multisampleName);
 
             // There is exactly 1 part in the template!
             final YamahaYsfcPerformancePart part = performance.getParts ().get (0);
             final int [] waveReferences = this.fillPart (counters, format, ysfcFile, categoryID, multisampleSource, multisampleName, part);
-            final YamahaYsfcEntry performanceEntry = createPerformanceEntry (categoryID, multisampleName, CONTENT_NUMBER + i, waveReferences, 1);
+            final YamahaYsfcEntry performanceEntry = createPerformanceEntry (categoryID, multisampleName, CONTENT_NUMBER + performanceIndex, waveReferences, 1);
+            performanceIndex++;
+            if (performanceIndex > MAX_PERFORMANCES)
+            {
+                this.notifier.logError ("IDS_YSFC_TOO_MANY_PERFORMANCES", Integer.toString (numMultisampleSources));
+                return;
+            }
+
             ysfcFile.fillChunkPair (YamahaYsfcChunk.ENTRY_LIST_PERFORMANCE, YamahaYsfcChunk.DATA_LIST_PERFORMANCE, performanceEntry, performance);
         }
     }
@@ -424,6 +456,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
         for (final ISampleZone zone: sampleZones)
             this.createWaveData (format, counters, keybankList, waveDataList, zone);
 
+        // Starts with 1!
         counters.keygroupCounter++;
         final int keyBankIndex = 0x10000 + counters.keygroupCounter;
         final YamahaYsfcEntry keyBankEntry = createKeyBankEntry (waveformName, keyBankIndex);
@@ -449,12 +482,12 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
         // Tuning
 
         final double tune = zone.getTuning ();
-        final int semitones = (int) tune;
+        final int semitones = (int) Math.round (tune);
         element.setCoarseTune (semitones + 64);
-        element.setFineTune ((int) ((tune - semitones) * 100) + 64);
+        element.setFineTune ((int) Math.round ((tune - semitones) * 100) + 64);
         element.setPitchKeyFollowSensitivity ((int) Math.round (zone.getKeyTracking () * 100));
 
-        element.setPan (MathUtils.denormalizeIntegerRange (zone.getTuning (), -63, 63, 64));
+        element.setPan (MathUtils.denormalizeIntegerRange (zone.getPanning (), -63, 63, 64));
 
         // Gain & Level envelope
 
@@ -475,7 +508,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
 
         // Pitch Envelope
 
-        final IEnvelopeModulator pitchEnvelopeModulator = zone.getPitchModulator ();
+        final IEnvelopeModulator pitchEnvelopeModulator = zone.getPitchEnvelopeModulator ();
         final double pitchDepth = pitchEnvelopeModulator.getDepth ();
         if (pitchDepth > 0)
         {
@@ -714,8 +747,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
             waveData.setData (waveDataContent);
         }
 
-        this.notifyProgress ();
-        this.notifyNewline (counters.sampleNumber);
+        this.progress.notifyProgress ();
         counters.sampleNumber++;
     }
 
@@ -750,7 +782,7 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
 
         // Each of the 16 bits represents a category: Bit 0 = Off, Bit 1 = Piano, ...
         final int mainCategory = categoryID / 16;
-        final int categoryBit = categoryID == 256 ? 0 : (int) Math.pow (2, mainCategory);
+        final int categoryBit = categoryID == 256 ? 0 : (int) Math.round (Math.pow (2, mainCategory));
         StreamUtils.writeUnsigned16 (flagsOutput, categoryBit, true);
         performanceEntry.setFlags (flagsOutput.toByteArray ());
 
@@ -797,14 +829,14 @@ public class YamahaYsfcCreator extends AbstractCreator<YamahaYsfcCreatorUI>
         keybank.setVelocityRangeUpper (zone.getVelocityHigh ());
 
         final double tune = zone.getTuning ();
-        final int semitones = (int) Math.floor (tune);
+        final int semitones = (int) Math.round (tune);
         keybank.setCoarseTune (semitones);
-        keybank.setFineTune ((int) Math.floor ((tune - semitones) * 100.0));
+        keybank.setFineTune ((int) Math.round ((tune - semitones) * 100.0));
 
         final double gain = zone.getGain ();
         keybank.setLevel (gain < -95.25 ? 0 : (int) Math.round ((Math.clamp (gain, -95.25, 0) + 95.25) / 0.375) + 1);
 
-        keybank.setPanning (MathUtils.denormalizeIntegerRange (zone.getTuning (), -63, 63, 64));
+        keybank.setPanning (MathUtils.denormalizeIntegerRange (zone.getPanning (), -63, 63, 64));
 
         keybank.setPlayStart (zone.getStart ());
         keybank.setLoopEnd (zone.getStop ());

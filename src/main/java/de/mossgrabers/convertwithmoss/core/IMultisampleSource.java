@@ -5,10 +5,12 @@
 package de.mossgrabers.convertwithmoss.core;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 import de.mossgrabers.convertwithmoss.core.model.IEnvelopeModulator;
 import de.mossgrabers.convertwithmoss.core.model.IFilter;
@@ -77,6 +79,70 @@ public interface IMultisampleSource extends ISource
             if (group.isGroupRoundRobin ())
                 roundRobinGroups.put (group, Integer.valueOf (group.getSampleZones ().get (0).getSequencePosition ()));
         return roundRobinGroups;
+    }
+
+
+    /**
+     * If all zones of all groups are set to play round-robin.
+     *
+     * @return True if all sample zones have round-robin enabled
+     */
+    default boolean isFullRoundRobin ()
+    {
+        for (final IGroup group: this.getNonEmptyGroups (false))
+            if (!group.isFullRoundRobin ())
+                return false;
+        return true;
+    }
+
+
+    /**
+     * If at least one zones in this group is set to play round-robin.
+     *
+     * @return True if at least one sample zone has round-robin enabled
+     */
+    default boolean hasRoundRobin ()
+    {
+        for (final IGroup group: this.getNonEmptyGroups (false))
+            if (group.hasRoundRobin ())
+                return true;
+        return false;
+    }
+
+
+    /**
+     * Collect all sample zones from all groups into one list.
+     * 
+     * @param filterReleaseTriggers Removes all groups which do only contain release triggers
+     * @return All sample zones of the multi-sample
+     */
+    default List<ISampleZone> getAllSampleZones (final boolean filterReleaseTriggers)
+    {
+        final List<IGroup> groups = this.getNonEmptyGroups (filterReleaseTriggers);
+        final List<ISampleZone> sampleZones = new ArrayList<> ();
+        for (final IGroup group: groups)
+            sampleZones.addAll (group.getSampleZones ());
+        return sampleZones;
+    }
+
+
+    /**
+     * Get all sample zones of the multi-sample ordered by their root note and then by their
+     * low-velocity (for each root note).
+     * 
+     * @param filterReleaseTriggers Removes all groups which do only contain release triggers
+     * @return All sample zones of the multi-sample ordered by root note and low-velocity
+     */
+    default TreeMap<Integer, TreeMap<Integer, List<ISampleZone>>> getOrderedSampleZones (final boolean filterReleaseTriggers)
+    {
+        final TreeMap<Integer, TreeMap<Integer, List<ISampleZone>>> result = new TreeMap<> ();
+        for (final ISampleZone sampleZone: getAllSampleZones (filterReleaseTriggers))
+        {
+            final TreeMap<Integer, List<ISampleZone>> velocityLayers = result.computeIfAbsent (Integer.valueOf (sampleZone.getKeyRoot ()), _ -> new TreeMap<> ());
+            final List<ISampleZone> sameZone = velocityLayers.computeIfAbsent (Integer.valueOf (sampleZone.getVelocityLow ()), _ -> new ArrayList<> ());
+            sameZone.add (sampleZone);
+        }
+        return result;
     }
 
 
@@ -170,7 +236,7 @@ public interface IMultisampleSource extends ISource
 
     /**
      * Get the lowest key covered by a sample in all of the groups.
-     * 
+     *
      * @return The lowest playing key (0-127)
      */
     int getLowestKey ();
@@ -178,7 +244,7 @@ public interface IMultisampleSource extends ISource
 
     /**
      * Get the highest key covered by a sample in all of the groups.
-     * 
+     *
      * @return The highest playing key (0-127)
      */
     int getHighestKey ();

@@ -10,18 +10,21 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import de.mossgrabers.convertwithmoss.core.DetectSettings;
 import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractWavCreator;
 import de.mossgrabers.convertwithmoss.core.creator.DestinationAudioFormat;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
@@ -52,10 +55,11 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
     {
         24
     }, 48000, true);
-    private static final DestinationAudioFormat DEFEAULT_AUDIO_FORMAT        = new DestinationAudioFormat ();
+    private static final DestinationAudioFormat DEFAULT_AUDIO_FORMAT         = new DestinationAudioFormat ();
 
     private static final Map<String, String>    EMPTY_PARAM_ATTRIBUTES       = new HashMap<> ();
     private static final Map<String, String>    MULTISAMPLE_PARAM_ATTRIBUTES = new HashMap<> ();
+    private static final Set<Integer>           SUPPORTED_BIT_DEPTHS         = new HashSet<> ();
     static
     {
         EMPTY_PARAM_ATTRIBUTES.put ("gaindb", "0");
@@ -148,6 +152,10 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("recusethres", "0");
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("recthresh", "-20000");
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("recmonoutbus", "0");
+
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (16));
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (24));
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (32));
     }
 
 
@@ -228,10 +236,10 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
             // Store all samples
             if (resample)
                 recalculateSamplePositions (multisampleSource, 48000);
-            this.writeSamples (presetFolder, multisampleSource, resample ? OPTIMIZED_AUDIO_FORMAT : DEFEAULT_AUDIO_FORMAT, trim);
+            this.writeSamples (presetFolder, multisampleSource, resample ? OPTIMIZED_AUDIO_FORMAT : DEFAULT_AUDIO_FORMAT, trim);
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -262,9 +270,20 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
         // Store all samples
         if (resample)
             recalculateSamplePositions (multisampleSource, 48000);
-        this.writeSamples (presetFolder, multisampleSource, resample ? OPTIMIZED_AUDIO_FORMAT : DEFEAULT_AUDIO_FORMAT, trim);
+        this.writeSamples (presetFolder, multisampleSource, resample ? OPTIMIZED_AUDIO_FORMAT : DEFAULT_AUDIO_FORMAT, trim);
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkProcessingCompatibility (final DetectSettings detectSettings)
+    {
+        if (detectSettings.reduceBitDepth <= 0 || SUPPORTED_BIT_DEPTHS.contains (Integer.valueOf (detectSettings.reduceBitDepth)))
+            return true;
+        this.notifier.log ("IDS_PROCESSING_REDUCE_BIT_DEPTH_NOT_SUPPORTED", Integer.toString (detectSettings.reduceBitDepth), "16, 24");
+        return false;
     }
 
 
@@ -311,6 +330,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
             this.notifier.log ("IDS_1010_MUSIC_ADDING_INSTRUMENT", multisampleSource.getName ());
             final List<IGroup> groups = this.combineSplitStereo (multisampleSource);
             multisampleSource.setGroups (groups);
+            this.checkDuplicateRanges (groups);
 
             final Element slotElement = activeSlots.get (i);
             final String presetPath = "\\Presets\\" + subFolder + multisampleSource.getName ();
@@ -462,7 +482,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
      */
     private static void createSample (final Document document, final String presetPath, final Element groupElement, final ISampleZone zone, final int sampleIndex, final int slot, final boolean trim)
     {
-        /////////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Sample element and attributes
 
         final Element cellElement = XMLUtils.addElement (document, groupElement, Music1010Tag.CELL);
@@ -491,7 +511,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
 
         XMLUtils.setIntegerAttribute (paramsElement, Music1010Tag.ATTR_REVERSE, zone.isReversed () ? 1 : 0);
 
-        /////////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Key & Velocity attributes
 
         final int keyLow = limitToDefault (zone.getKeyLow (), 0);
@@ -506,7 +526,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
         // No fades info.getVelocityCrossfadeLow ()
         // No fades info.getVelocityCrossfadeHigh ()
 
-        /////////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Loops
 
         // ... are stored in the WAV files
@@ -538,7 +558,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
         // Negative values for frequency represent a low-pass filter, positive values a high-pass.
         // Note: no poles supported
         final double normalizedFrequency = MathUtils.normalizeFrequency (filter.getCutoff (), IFilter.MAX_FREQUENCY);
-        int frequency = (int) (normalizedFrequency * 1000.0);
+        int frequency = (int) Math.round (normalizedFrequency * 1000.0);
         if (type == FilterType.LOW_PASS)
             frequency -= 1000;
         paramsElement.setAttribute (Music1010Tag.ATTR_FILTER_CUTOFF, Integer.toString (frequency));
@@ -546,7 +566,7 @@ public class Music1010Creator extends AbstractWavCreator<Music1010CreatorUI>
         // Note: Resonance is in the range [0..1] but it is not documented what value 1
         // represents. Therefore, we assume 40dB maximum and a linear range (could also
         // be logarithmic).
-        final int resonance = (int) (filter.getResonance () * 1000.0);
+        final int resonance = (int) Math.round (filter.getResonance () * 1000.0);
         paramsElement.setAttribute (Music1010Tag.ATTR_FILTER_RESONANCE, Integer.toString (resonance));
     }
 

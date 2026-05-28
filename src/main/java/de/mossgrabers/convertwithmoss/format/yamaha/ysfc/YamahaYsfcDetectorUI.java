@@ -51,7 +51,7 @@ public class YamahaYsfcDetectorUI extends MetadataSettingsUI
     {
         final BoxPanel panel = new BoxPanel (Orientation.VERTICAL);
 
-        ////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         // Options
 
         panel.createSeparator ("@IDS_YSFC_SOURCE_TYPE");
@@ -64,7 +64,7 @@ public class YamahaYsfcDetectorUI extends MetadataSettingsUI
         order2.setAccessibleHelp (Functions.getMessage ("IDS_YSFC_SOURCE_TYPE"));
         order2.setToggleGroup (this.sourceTypeToggleGroup);
 
-        ////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         // Metadata
 
         this.addTo (panel);
@@ -116,7 +116,7 @@ public class YamahaYsfcDetectorUI extends MetadataSettingsUI
         if (!super.checkSettingsCLI (notifier, parameters))
             return false;
 
-        String value = parameters.remove (YSFC_SOURCE_TYPE);
+        final String value = parameters.remove (YSFC_SOURCE_TYPE);
         this.sourceType = "1".equals (value);
         return true;
     }

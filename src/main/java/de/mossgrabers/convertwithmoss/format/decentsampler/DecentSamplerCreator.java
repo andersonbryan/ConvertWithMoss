@@ -126,7 +126,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
 
         this.copyResources (resourceDestination);
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -145,7 +145,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
         else
             this.storeLibrary (multiFile, results);
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -300,9 +300,16 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
 
             final Set<Double> ampVelDepths = new HashSet<> ();
             final List<ISampleZone> zones = group.getSampleZones ();
+            boolean isRoundRobin = false;
+            int seqLength = 0;
             for (int zoneIndex = 0; zoneIndex < zones.size (); zoneIndex++)
             {
                 final ISampleZone zone = zones.get (zoneIndex);
+
+                isRoundRobin = isRoundRobin || zone.getPlayLogic () == PlayLogic.ROUND_ROBIN;
+                if (isRoundRobin && zone.getSequencePosition () >= 1)
+                    seqLength++;
+
                 ampVelDepths.add (Double.valueOf (zone.getAmplitudeVelocityModulator ().getDepth ()));
                 final Element sampleElement = createSample (document, folderName, groupElement, zone);
 
@@ -315,12 +322,19 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
                 else if (ampEnvParameterLevel == ParameterLevel.INSTRUMENT && groupIndex == 0 && zoneIndex == 0)
                     setEnvelope (groupsElement, modulatorSource);
             }
+
             if (ampVelDepths.size () == 1)
                 XMLUtils.setDoubleAttribute (groupElement, DecentSamplerTag.AMP_VELOCITY_TRACK, ampVelDepths.iterator ().next ().doubleValue (), 4);
 
+            if (isRoundRobin)
+            {
+                groupElement.setAttribute (DecentSamplerTag.SEQ_MODE, "round_robin");
+                XMLUtils.setIntegerAttribute (groupElement, DecentSamplerTag.SEQ_LENGTH, seqLength);
+            }
+
             this.createFilter (document, modulatorsElement, multisampleSource, groupElement, groupIndex);
             if (!zones.isEmpty ())
-                createPitchModulator (document, modulatorsElement, zones.get (0).getPitchModulator (), groupIndex);
+                createPitchModulator (document, modulatorsElement, zones.get (0).getPitchEnvelopeModulator (), groupIndex);
         }
 
         this.makeMonophonic (document, multisampleElement, groupsElement);
@@ -352,7 +366,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
      */
     private static Element createSample (final Document document, final String folderName, final Element groupElement, final ISampleZone zone)
     {
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Sample element and attributes
 
         final Element sampleElement = XMLUtils.addElement (document, groupElement, DecentSamplerTag.SAMPLE);
@@ -363,7 +377,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
         final double gain = zone.getGain ();
         if (gain != 0)
             sampleElement.setAttribute (DecentSamplerTag.VOLUME, gain + "dB");
-        sampleElement.setAttribute (DecentSamplerTag.PANNING, Integer.toString ((int) (zone.getTuning () * 100.0)));
+        sampleElement.setAttribute (DecentSamplerTag.PANNING, Integer.toString ((int) Math.round (zone.getPanning () * 100.0)));
         XMLUtils.setDoubleAttribute (sampleElement, DecentSamplerTag.START, Math.max (0, zone.getStart ()), 3);
         final int stop = zone.getStop ();
         if (stop >= 0)
@@ -385,7 +399,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
                 sampleElement.setAttribute (DecentSamplerTag.SEQ_POSITION, Integer.toString (seqPos));
         }
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Key & Velocity attributes
 
         final int keyLow = limitToDefault (zone.getKeyLow (), 0);
@@ -400,7 +414,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
         XMLUtils.setIntegerAttribute (sampleElement, DecentSamplerTag.HI_VEL, limitToDefault (zone.getVelocityHigh (), 127));
         // No fades info.getVelocityCrossfadeHigh ()
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Loops
 
         final List<ISampleLoop> loops = zone.getLoops ();
@@ -529,7 +543,7 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
      * @param modulatorsElement The modulatorsElement
      * @throws IOException Could not load the template
      */
-    private void applyTemplate (final Document document, final Element rootElement, final Element groupsElement, Element modulatorsElement) throws IOException
+    private void applyTemplate (final Document document, final Element rootElement, final Element groupsElement, final Element modulatorsElement) throws IOException
     {
         // Read again the created amplitude envelope values...
         final double attackAttribute = XMLUtils.getDoubleAttribute (groupsElement, DecentSamplerTag.ENV_ATTACK, 0.0);
@@ -556,10 +570,10 @@ public class DecentSamplerCreator extends AbstractWavCreator<DecentSamplerCreato
         if (childModulatorsElement != null)
         {
             final NodeList modulatorsChildrenList = childModulatorsElement.getChildNodes ();
-            int length = modulatorsChildrenList.getLength ();
+            final int length = modulatorsChildrenList.getLength ();
             for (int i = length - 1; i >= 0; i--)
             {
-                org.w3c.dom.Node item = modulatorsChildrenList.item (i);
+                final org.w3c.dom.Node item = modulatorsChildrenList.item (i);
                 if (item != null)
                     modulatorsElement.appendChild (item);
             }

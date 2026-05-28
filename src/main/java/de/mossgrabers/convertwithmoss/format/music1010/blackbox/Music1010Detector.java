@@ -22,7 +22,7 @@ import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultMultisampleSource;
@@ -30,6 +30,7 @@ import de.mossgrabers.convertwithmoss.core.detector.DefaultPerformanceSource;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
 import de.mossgrabers.convertwithmoss.core.model.IFilter;
 import de.mossgrabers.convertwithmoss.core.model.IGroup;
+import de.mossgrabers.convertwithmoss.core.model.IMetadata;
 import de.mossgrabers.convertwithmoss.core.model.ISampleData;
 import de.mossgrabers.convertwithmoss.core.model.ISampleLoop;
 import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
@@ -99,7 +100,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
 
     /** {@inheritDoc} */
     @Override
-    protected List<IPerformanceSource> readPerformanceFiles (final File sourceFile)
+    protected List<IPerformanceSource> readPerformanceFile (final File sourceFile)
     {
         if (this.waitForDelivery () || !"preset.xml".equals (sourceFile.getName ()))
             return null;
@@ -119,7 +120,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
         try (final FileInputStream in = new FileInputStream (file))
         {
             // There is a null byte at the end of the file which gets dropped by trim
-            final String content = StreamUtils.readUTF8 (in).trim ();
+            final String content = StreamUtils.readUtf8 (in).trim ();
             final Document document = XMLUtils.parseDocument (new InputSource (new StringReader (content)));
             return this.parseMetadataFile (file, file.getParent (), document);
         }
@@ -171,14 +172,12 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
             performanceSource.addInstrument (this.parseAggregatedMultisample (sourceFile, sampleElements, basePath));
         }
         else
-        {
             for (final Element sampleElement: multisampleElements)
             {
                 final Optional<IInstrumentSource> instrumentSource = this.parseMultisample (sourceFile, sampleElement, assetElements, basePath);
                 if (instrumentSource.isPresent ())
                     performanceSource.addInstrument (instrumentSource.get ());
             }
-        }
         return performanceSource;
     }
 
@@ -261,7 +260,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
         sampleZone.setVelocityLow (1);
         sampleZone.setVelocityHigh (127);
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Loops
 
         if (!isOneShot)
@@ -278,7 +277,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
             }
         }
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Volume envelope
 
         final IEnvelope amplitudeEnvelope = sampleZone.getAmplitudeEnvelopeModulator ().getSource ();
@@ -293,7 +292,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
     }
 
 
-    private Optional<IInstrumentSource> parseMultisample (final File multiSampleFile, final Element sampleElement, final List<Element> assetElements, final String basePath)
+    private Optional<IInstrumentSource> parseMultisample (final File sourceFile, final Element sampleElement, final List<Element> assetElements, final String basePath)
     {
         final String pathPrefix = sampleElement.getAttribute (Music1010Tag.ATTR_FILENAME);
         if (pathPrefix == null || pathPrefix.isBlank ())
@@ -301,9 +300,9 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
 
         final File pathPrefixFile = new File (pathPrefix);
         final String name = pathPrefixFile.getName ();
-        final String [] parts = AudioFileUtils.createPathParts (multiSampleFile.getParentFile (), this.sourceFolder, name);
+        final String [] parts = AudioFileUtils.createPathParts (sourceFile.getParentFile (), this.sourceFolder, name);
 
-        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (multiSampleFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, multiSampleFile));
+        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (sourceFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, sourceFile));
         final IGroup group = new DefaultGroup ("Group");
         multisampleSource.setGroups (Collections.singletonList (group));
 
@@ -325,7 +324,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
             final double ampEnvSustain = XMLUtils.getIntegerAttribute (paramsElement, Music1010Tag.ATTR_AMPEG_SUSTAIN, 1) / 1000.0;
             final double ampEnvRelease = MathUtils.denormalizeTime (XMLUtils.getIntegerAttribute (paramsElement, Music1010Tag.ATTR_AMPEG_RELEASE, 0), 38.0);
 
-            File previousFolder = null;
+            final File previousFolder = null;
             for (final Element assetElement: assetElements)
             {
                 final String filename = assetElement.getAttribute (Music1010Tag.ATTR_FILENAME);
@@ -337,7 +336,9 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
         }
 
         readVelocityModulators (sampleElement, group);
-        this.createMetadata (multisampleSource.getMetadata (), this.getFirstSample (multisampleSource.getGroups ()), parts);
+        final IMetadata metadata = multisampleSource.getMetadata ();
+        this.createMetadata (metadata, this.getFirstSample (multisampleSource.getGroups ()), parts);
+        this.updateCreationDateTime (metadata, sourceFile);
         return Optional.of (new DefaultInstrumentSource (multisampleSource, midiChannel));
     }
 
@@ -452,7 +453,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
         if (velHigh > 0)
             sampleZone.setVelocityHigh (velHigh);
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Loops
 
         try
@@ -464,7 +465,7 @@ public class Music1010Detector extends AbstractDetector<MetadataSettingsUI>
             this.notifier.logError (ERR_BAD_METADATA_FILE, ex);
         }
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Volume envelope
 
         final IEnvelope amplitudeEnvelope = sampleZone.getAmplitudeEnvelopeModulator ().getSource ();

@@ -22,7 +22,7 @@ import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultMultisampleSource;
@@ -30,6 +30,7 @@ import de.mossgrabers.convertwithmoss.core.detector.DefaultPerformanceSource;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
 import de.mossgrabers.convertwithmoss.core.model.IFilter;
 import de.mossgrabers.convertwithmoss.core.model.IGroup;
+import de.mossgrabers.convertwithmoss.core.model.IMetadata;
 import de.mossgrabers.convertwithmoss.core.model.ISampleData;
 import de.mossgrabers.convertwithmoss.core.model.ISampleLoop;
 import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
@@ -87,7 +88,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
 
         final String filename = file.getName ();
         final boolean isProject = "project.xml".equals (filename);
-        if (!isProject && !("patch.xml".equals (filename)))
+        if (!isProject && !"patch.xml".equals (filename))
             return Collections.emptyList ();
 
         final String basePath = isProject ? file.getParentFile ().getParentFile ().getParent () : file.getParent ();
@@ -105,7 +106,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
 
     /** {@inheritDoc} */
     @Override
-    protected List<IPerformanceSource> readPerformanceFiles (final File file)
+    protected List<IPerformanceSource> readPerformanceFile (final File file)
     {
         if (this.waitForDelivery () || !"project.xml".equals (file.getName ()))
             return null;
@@ -127,9 +128,9 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
     {
         try (final FileInputStream in = new FileInputStream (file))
         {
-            final String content = StreamUtils.readUTF8 (in);
+            final String content = StreamUtils.readUtf8 (in);
             final Document document = XMLUtils.parseDocument (new InputSource (new StringReader (content)));
-            return this.parseMetadataFile (file, basePath, document);
+            return this.parseXMLFile (file, basePath, document);
         }
         catch (final IOException | SAXException ex)
         {
@@ -140,7 +141,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
 
 
     /**
-     * Load and parse the metadata description file.
+     * Load and parse the XML description file.
      *
      * @param sourceFile The preset or library file
      * @param basePath The parent folder, in case of a library the relative folder in the ZIP
@@ -148,7 +149,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
      * @param document The XML document to parse
      * @return The parsed multi-sample source
      */
-    private IPerformanceSource parseMetadataFile (final File sourceFile, final String basePath, final Document document)
+    private IPerformanceSource parseXMLFile (final File sourceFile, final String basePath, final Document document)
     {
         final Element top = document.getDocumentElement ();
         if (!Music1010Tag.ROOT.equals (top.getNodeName ()))
@@ -187,7 +188,6 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
             Element instElement = null;
 
             for (final Element cellElement: XMLUtils.getChildElementsByName (trackElement, Music1010Tag.CELL))
-            {
                 switch (cellElement.getAttribute (Music1010Tag.ATTR_TYPE))
                 {
                     case "saminst":
@@ -199,7 +199,6 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
                     default:
                         break;
                 }
-            }
             if (instElement == null || assetElements.isEmpty ())
                 return null;
 
@@ -212,7 +211,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
     }
 
 
-    private Optional<IInstrumentSource> parseMultisample (final File multiSampleFile, final String defaultName, final Element trackElement, final Element instElement, final List<Element> assetElements, final String basePath)
+    private Optional<IInstrumentSource> parseMultisample (final File sourceFile, final String defaultName, final Element trackElement, final Element instElement, final List<Element> assetElements, final String basePath)
     {
         final Element trackParamsElement = XMLUtils.getChildElementByName (trackElement, Music1010Tag.PARAMS);
         final Element instParamsElement = XMLUtils.getChildElementByName (instElement, Music1010Tag.PARAMS);
@@ -225,9 +224,9 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
 
         final File pathPrefixFile = new File (pathPrefix);
         final String name = pathPrefixFile.getName ();
-        final String [] parts = AudioFileUtils.createPathParts (multiSampleFile.getParentFile (), this.sourceFolder, name);
+        final String [] parts = AudioFileUtils.createPathParts (sourceFile.getParentFile (), this.sourceFolder, name);
 
-        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (multiSampleFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, multiSampleFile));
+        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (sourceFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, sourceFile));
         final IGroup group = new DefaultGroup ("Group");
         multisampleSource.setGroups (Collections.singletonList (group));
 
@@ -266,7 +265,9 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
         parseEffects (instParamsElement, multisampleSource);
         readVelocityModulators (instElement, group);
 
-        this.createMetadata (multisampleSource.getMetadata (), this.getFirstSample (multisampleSource.getGroups ()), parts);
+        final IMetadata metadata = multisampleSource.getMetadata ();
+        this.createMetadata (metadata, this.getFirstSample (multisampleSource.getGroups ()), parts);
+        this.updateCreationDateTime (metadata, sourceFile);
         return Optional.of (new DefaultInstrumentSource (multisampleSource, midiChannel));
     }
 
@@ -326,7 +327,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
      */
     private void parseSampleData (final IGroup group, final Element paramsElement, final String basePath, final String sampleName, final double ampEnvAttack, final double ampEnvDecay, final double ampEnvSustain, final double ampEnvRelease, final ISampleLoop defaultLoop, final boolean isReversed)
     {
-        File sampleFile = new File (basePath, sampleName);
+        final File sampleFile = new File (basePath, sampleName);
         // If the file does not exist, try to find it outside of the Presets folder
         if (!sampleFile.exists ())
         {
@@ -370,7 +371,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
         if (velHigh > 0)
             sampleZone.setVelocityHigh (velHigh);
 
-        /////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
         // Play-range & Loops
 
         sampleZone.setStart (XMLUtils.getIntegerAttribute (paramsElement, Music1010Tag.ATTR_SAMPLE_START, 0));
@@ -395,7 +396,7 @@ public class BentoDetector extends AbstractDetector<MetadataSettingsUI>
 
         sampleZone.setReversed (isReversed);
 
-        /////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
         // Volume envelope
 
         final IEnvelope amplitudeEnvelope = sampleZone.getAmplitudeEnvelopeModulator ().getSource ();

@@ -21,14 +21,15 @@ import java.util.regex.Pattern;
 
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
 import de.mossgrabers.convertwithmoss.core.NoteParser;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelopeModulator;
 import de.mossgrabers.convertwithmoss.core.model.IFileBasedSampleData;
 import de.mossgrabers.convertwithmoss.core.model.IGroup;
+import de.mossgrabers.convertwithmoss.core.model.IMetadata;
 import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
 import de.mossgrabers.convertwithmoss.core.model.enumeration.PlayLogic;
 import de.mossgrabers.convertwithmoss.core.model.implementation.DefaultGroup;
@@ -89,20 +90,20 @@ public class DistingExDetector extends AbstractDetector<MetadataSettingsUI>
      * Load and parse the DistingEX file.
      *
      * @param in The input stream to read from
-     * @param file The source file
+     * @param sourceFile The source file
      * @return The parsed multi-sample source
      * @throws FormatException Error in the format of the file
      * @throws IOException Could not read from the file
      */
-    private List<IMultisampleSource> parseFile (final InputStream in, final File file) throws FormatException, IOException
+    private List<IMultisampleSource> parseFile (final InputStream in, final File sourceFile) throws FormatException, IOException
     {
         String name = this.readHeader (in);
         if (name.isBlank ())
-            name = FileUtils.getNameWithoutType (file);
+            name = FileUtils.getNameWithoutType (sourceFile);
 
-        final File parentFile = file.getParentFile ();
+        final File parentFile = sourceFile.getParentFile ();
         final String [] parts = AudioFileUtils.createPathParts (parentFile, this.sourceFolder, name);
-        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (file, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, file));
+        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (sourceFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, sourceFile));
 
         final int [] parameters = readParameters (in);
 
@@ -111,7 +112,9 @@ public class DistingExDetector extends AbstractDetector<MetadataSettingsUI>
 
         applyParameters (groups, parameters);
 
-        this.createMetadata (multisampleSource.getMetadata (), this.getFirstSample (groups), parts);
+        final IMetadata metadata = multisampleSource.getMetadata ();
+        this.createMetadata (metadata, this.getFirstSample (groups), parts);
+        this.updateCreationDateTime (metadata, sourceFile);
 
         return Collections.singletonList (multisampleSource);
     }
@@ -141,7 +144,7 @@ public class DistingExDetector extends AbstractDetector<MetadataSettingsUI>
         if (presetVersion != 0x14)
             this.notifier.logError ("IDS_DEX_UNKNOWN_PRESET_VERSION", Integer.toString (presetVersion));
 
-        final String name = StreamUtils.readASCII (in, 16).trim ();
+        final String name = StreamUtils.readAscii (in, 16).trim ();
 
         // Unknown
         StreamUtils.readSigned32 (in, false);
@@ -310,7 +313,7 @@ public class DistingExDetector extends AbstractDetector<MetadataSettingsUI>
      */
     private static File [] getWavFiles (final File parentPath, final InputStream in) throws IOException
     {
-        final String subPath = StreamUtils.readNullTerminatedASCIIMax (in, 21).trim ();
+        final String subPath = StreamUtils.readAsciiNullTerminatedMax (in, 21).trim ();
         final File sampleFolder = new File (parentPath, subPath);
         if (!sampleFolder.exists ())
             throw new IOException (Functions.getMessage ("IDS_DEX_NO_SAMPLE_FOLDER", sampleFolder.getCanonicalPath ()));

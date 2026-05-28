@@ -277,7 +277,7 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
             writer.write (xmlCode.get ());
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -296,7 +296,7 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
 
         this.storePreset (relativeFolderName, destinationFolder, multisampleSource, multiFile, metadata.get ());
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
 
         return multiFile;
     }
@@ -511,13 +511,13 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
         final Element regionElement = XMLUtils.addElement (document, groupElement, TX16WxTag.REGION);
         XMLUtils.setIntegerAttribute (regionElement, TX16WxTag.SAMPLE, zoneIndex);
         regionElement.setAttribute (TX16WxTag.ATTENUATION, String.format (Locale.US, "%.2f dB", Double.valueOf (zone.getGain ())));
-        XMLUtils.setDoubleAttribute (regionElement, TX16WxTag.PANNING, zone.getTuning (), 2);
+        XMLUtils.setDoubleAttribute (regionElement, TX16WxTag.PANNING, zone.getPanning (), 2);
         regionElement.setAttribute (TX16WxTag.SAMPLE_LOOP, "0");
         XMLUtils.setBooleanAttribute (regionElement, TX16WxTag.REVERSE, zone.isReversed ());
 
         // No key tracking
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Key & Velocity attributes
 
         final Element boundsElement = XMLUtils.addElement (document, regionElement, TX16WxTag.BOUNDS);
@@ -540,9 +540,9 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
         final double tune = zone.getTuning ();
         if (tune != 0)
         {
-            int transpose = (int) tune;
+            int transpose = (int) Math.round (tune);
             final double fine = tune - transpose;
-            int fineCents = (int) (fine * 100.0);
+            int fineCents = (int) Math.round (fine * 100.0);
             if (fineCents < -50)
             {
                 transpose -= 1;
@@ -576,7 +576,7 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
             // The whole group can be delayed which is basically the same as the amplitude delay
             soundshapeElement.setAttribute (TX16WxTag.GROUP_DELAY, formatTime (amplitudeEnvelope.getDelayTime ()));
 
-            //////////////////////////////////////////////
+            /////////////////////////////////////////////
             // Amplitude
 
             final double sustain = amplitudeEnvelope.getSustainLevel ();
@@ -601,7 +601,7 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
             pitchbend = pitchbend <= 0 ? 200 : pitchbend;
             addModulationEntry (document, modulationElement, "Pitchbend", "Pitch", pitchbend + "Ct");
 
-            //////////////////////////////////////////////
+            /////////////////////////////////////////////
             // Filter
 
             final Optional<IFilter> optFilter = zone.getFilter ();
@@ -627,37 +627,37 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
                 {
                     final Element envElement = XMLUtils.addElement (document, soundshapeElement, TX16WxTag.ENVELOPE_1);
                     final IEnvelope filterEnvelope = cutoffModulator.getSource ();
-                    envElement.setAttribute (TX16WxTag.ENV_LEVEL0, (int) (filterEnvelope.getStartLevel () * 100.0) + "%");
+                    envElement.setAttribute (TX16WxTag.ENV_LEVEL0, (int) Math.round (filterEnvelope.getStartLevel () * 100.0) + "%");
                     envElement.setAttribute (TX16WxTag.ENV_TIME1, formatTime (filterEnvelope.getAttackTime ()));
-                    envElement.setAttribute (TX16WxTag.ENV_LEVEL1, (int) (filterEnvelope.getSustainLevel () * 100.0) + "%");
+                    envElement.setAttribute (TX16WxTag.ENV_LEVEL1, (int) Math.round (filterEnvelope.getSustainLevel () * 100.0) + "%");
                     envElement.setAttribute (TX16WxTag.ENV_TIME2, formatTime (filterEnvelope.getDecayTime ()));
-                    envElement.setAttribute (TX16WxTag.ENV_LEVEL2, (int) (filterEnvelope.getSustainLevel () * 100.0) + "%");
+                    envElement.setAttribute (TX16WxTag.ENV_LEVEL2, (int) Math.round (filterEnvelope.getSustainLevel () * 100.0) + "%");
                     envElement.setAttribute (TX16WxTag.ENV_TIME3, formatTime (filterEnvelope.getReleaseTime ()));
-                    envElement.setAttribute (TX16WxTag.ENV_LEVEL3, (int) (filterEnvelope.getEndLevel () * 100.0) + "%");
+                    envElement.setAttribute (TX16WxTag.ENV_LEVEL3, (int) Math.round (filterEnvelope.getEndLevel () * 100.0) + "%");
                     XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE1, amplitudeEnvelope.getAttackSlope (), 6);
                     XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE2, amplitudeEnvelope.getDecaySlope (), 6);
                     XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE3, amplitudeEnvelope.getReleaseSlope (), 6);
-                    addModulationEntry (document, modulationElement, "ENV1", "Filter 1 Freq", (int) (filterModDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
+                    addModulationEntry (document, modulationElement, "ENV1", "Filter 1 Freq", (int) Math.round (filterModDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
                 }
 
                 final double filterVelocityDepth = filter.getCutoffVelocityModulator ().getDepth ();
                 if (filterVelocityDepth != 0)
-                    addModulationEntry (document, modulationElement, "Vel", "Filter 1 Freq", (int) (filterVelocityDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
+                    addModulationEntry (document, modulationElement, "Vel", "Filter 1 Freq", (int) Math.round (filterVelocityDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
             }
 
-            //////////////////////////////////////////////
+            /////////////////////////////////////////////
             // Pitch
 
-            final IEnvelopeModulator pitchModulator = zone.getPitchModulator ();
+            final IEnvelopeModulator pitchModulator = zone.getPitchEnvelopeModulator ();
             final double pitchModDepth = pitchModulator.getDepth ();
             if (pitchModDepth != 0)
             {
                 final Element envElement = XMLUtils.addElement (document, soundshapeElement, TX16WxTag.ENVELOPE_2);
                 final IEnvelope pitchEnvelope = pitchModulator.getSource ();
-                envElement.setAttribute (TX16WxTag.ENV_LEVEL0, (int) (pitchEnvelope.getStartLevel () * 100.0) + "%");
-                envElement.setAttribute (TX16WxTag.ENV_LEVEL1, (int) (pitchEnvelope.getSustainLevel () * 100.0) + "%");
-                envElement.setAttribute (TX16WxTag.ENV_LEVEL2, (int) (pitchEnvelope.getSustainLevel () * 100.0) + "%");
-                envElement.setAttribute (TX16WxTag.ENV_LEVEL3, (int) (pitchEnvelope.getEndLevel () * 100.0) + "%");
+                envElement.setAttribute (TX16WxTag.ENV_LEVEL0, (int) Math.round (pitchEnvelope.getStartLevel () * 100.0) + "%");
+                envElement.setAttribute (TX16WxTag.ENV_LEVEL1, (int) Math.round (pitchEnvelope.getSustainLevel () * 100.0) + "%");
+                envElement.setAttribute (TX16WxTag.ENV_LEVEL2, (int) Math.round (pitchEnvelope.getSustainLevel () * 100.0) + "%");
+                envElement.setAttribute (TX16WxTag.ENV_LEVEL3, (int) Math.round (pitchEnvelope.getEndLevel () * 100.0) + "%");
 
                 envElement.setAttribute (TX16WxTag.ENV_TIME1, formatTime (pitchEnvelope.getDecayTime ()));
                 envElement.setAttribute (TX16WxTag.ENV_TIME2, formatTime (0));
@@ -666,7 +666,7 @@ public class TX16WxCreator extends AbstractWavCreator<WavChunkSettingsUI>
                 XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE1, amplitudeEnvelope.getAttackSlope (), 6);
                 XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE2, amplitudeEnvelope.getDecaySlope (), 6);
                 XMLUtils.setDoubleAttribute (envElement, TX16WxTag.ENV_SHAPE3, amplitudeEnvelope.getReleaseSlope (), 6);
-                addModulationEntry (document, modulationElement, "ENV2", "Pitch", (int) (pitchModDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
+                addModulationEntry (document, modulationElement, "ENV2", "Pitch", (int) Math.round (pitchModDepth * IEnvelope.MAX_ENVELOPE_DEPTH) + "Ct");
             }
         }
 

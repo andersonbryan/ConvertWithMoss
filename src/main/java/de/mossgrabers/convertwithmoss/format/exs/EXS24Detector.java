@@ -19,13 +19,14 @@ import java.util.TreeMap;
 
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelopeModulator;
 import de.mossgrabers.convertwithmoss.core.model.IFilter;
 import de.mossgrabers.convertwithmoss.core.model.IGroup;
+import de.mossgrabers.convertwithmoss.core.model.IMetadata;
 import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
 import de.mossgrabers.convertwithmoss.core.model.enumeration.FilterType;
 import de.mossgrabers.convertwithmoss.core.model.enumeration.PlayLogic;
@@ -119,17 +120,17 @@ public class EXS24Detector extends AbstractDetector<MetadataWithSearchHeightSett
     /**
      * Create a multi-sample from the read EXS information.
      *
-     * @param file The source file
+     * @param sourceFile The source file
      * @param exs24File The read EXS24 file
      * @return The multi-sample source
      * @throws IOException Could not create a multi-sample
      */
-    private Optional<IMultisampleSource> createMultisample (final File file, final EXS24File exs24File) throws IOException
+    private Optional<IMultisampleSource> createMultisample (final File sourceFile, final EXS24File exs24File) throws IOException
     {
-        final String name = FileUtils.getNameWithoutType (file);
-        final File parentFile = file.getParentFile ();
+        final String name = FileUtils.getNameWithoutType (sourceFile);
+        final File parentFile = sourceFile.getParentFile ();
         final String [] parts = AudioFileUtils.createPathParts (parentFile, this.sourceFolder, name);
-        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (file, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, file));
+        final DefaultMultisampleSource multisampleSource = new DefaultMultisampleSource (sourceFile, parts, name, AudioFileUtils.subtractPaths (this.sourceFolder, sourceFile));
 
         final Map<Integer, IGroup> groupsMap = new TreeMap<> ();
         final Map<IGroup, EXS24Group> groupMapping = new HashMap<> ();
@@ -192,7 +193,9 @@ public class EXS24Detector extends AbstractDetector<MetadataWithSearchHeightSett
 
         multisampleSource.setGroups (new ArrayList<> (groupsMap.values ()));
         applyGlobalParameters (multisampleSource, exs24File.getParameters ());
-        this.createMetadata (multisampleSource.getMetadata (), this.getFirstSample (multisampleSource.getGroups ()), parts);
+        final IMetadata metadata = multisampleSource.getMetadata ();
+        this.createMetadata (metadata, this.getFirstSample (multisampleSource.getGroups ()), parts);
+        this.updateCreationDateTime (metadata, sourceFile);
         return Optional.of (multisampleSource);
     }
 
@@ -379,10 +382,11 @@ public class EXS24Detector extends AbstractDetector<MetadataWithSearchHeightSett
 
     private static boolean limitByGroupAttributes (final EXS24Group exs24Group, final ISampleZone zone)
     {
+        // Note: volume values can be added since the zone volume is relative!
         if (exs24Group.volume != 0)
-            zone.setGain (zone.getGain () + exs24Group.volume);
+            zone.setGain (exs24Group.volume + zone.getGain ());
         if (exs24Group.pan != 0)
-            zone.setPanning (zone.getTuning () + exs24Group.pan);
+            zone.setPanning (zone.getPanning () + exs24Group.pan);
 
         // Zone is completely outside of the groups' velocity range
         if (zone.getVelocityHigh () < exs24Group.minVelocity)

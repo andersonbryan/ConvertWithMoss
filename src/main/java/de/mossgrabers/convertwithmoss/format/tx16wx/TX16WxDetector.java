@@ -27,8 +27,8 @@ import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
 import de.mossgrabers.convertwithmoss.core.NoteParser;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultMultisampleSource;
@@ -133,7 +133,7 @@ public class TX16WxDetector extends AbstractDetector<MetadataWithSearchHeightSet
 
         try (final FileInputStream in = new FileInputStream (sourceFile))
         {
-            final String content = StreamUtils.readUTF8 (in);
+            final String content = StreamUtils.readUtf8 (in);
             final Document document = XMLUtils.parseDocument (new InputSource (new StringReader (content)));
             return this.parsePresetFile (sourceFile, sourceFile.getParent (), document);
         }
@@ -147,14 +147,14 @@ public class TX16WxDetector extends AbstractDetector<MetadataWithSearchHeightSet
 
     /** {@inheritDoc} */
     @Override
-    protected List<IPerformanceSource> readPerformanceFiles (final File sourceFile)
+    protected List<IPerformanceSource> readPerformanceFile (final File sourceFile)
     {
         if (this.waitForDelivery ())
             return Collections.emptyList ();
 
         try (final FileInputStream in = new FileInputStream (sourceFile))
         {
-            final String content = StreamUtils.readUTF8 (in);
+            final String content = StreamUtils.readUtf8 (in);
             final Document document = XMLUtils.parseDocument (new InputSource (new StringReader (content)));
             return this.parsePerformanceFile (sourceFile, sourceFile.getParent (), document);
         }
@@ -454,7 +454,7 @@ public class TX16WxDetector extends AbstractDetector<MetadataWithSearchHeightSet
                 if (pitchModulator.isPresent ())
                 {
                     final IEnvelopeModulator modulator = pitchModulator.get ();
-                    final IEnvelopeModulator zonePitchModulator = zone.getPitchModulator ();
+                    final IEnvelopeModulator zonePitchModulator = zone.getPitchEnvelopeModulator ();
                     zonePitchModulator.setDepth (modulator.getDepth ());
                     zonePitchModulator.setSource (modulator.getSource ());
                 }
@@ -462,7 +462,7 @@ public class TX16WxDetector extends AbstractDetector<MetadataWithSearchHeightSet
                 if (pitchbend >= 0)
                 {
                     zone.setBendUp (pitchbend);
-                    zone.setBendDown (pitchbend);
+                    zone.setBendDown (-pitchbend);
                 }
 
                 zone.getAmplitudeVelocityModulator ().setDepth (ampVelocity);

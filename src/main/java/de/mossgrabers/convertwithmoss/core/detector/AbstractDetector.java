@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -103,6 +105,19 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
 
     /** {@inheritDoc} */
     @Override
+    public Set<String> getFileEndings ()
+    {
+        final Set<String> endings = new TreeSet<> ();
+        this.configureFileEndings (false);
+        endings.addAll (Arrays.asList (this.fileEndings));
+        this.configureFileEndings (true);
+        endings.addAll (Arrays.asList (this.fileEndings));
+        return endings;
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
     public final void detect (final File sourceFolder, final Consumer<IMultisampleSource> multisampleSourceConsumer, final Consumer<IPerformanceSource> performanceSourceConsumer, final boolean detectPerformances)
     {
         this.configureFileEndings (detectPerformances);
@@ -116,6 +131,17 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
         this.unsupportedAttributes.clear ();
 
         this.startDetection ();
+    }
+
+
+    /**
+     * Set the source folder.
+     * 
+     * @param sourceFolder The sourceFolder to set
+     */
+    public void setSourceFolder (final File sourceFolder)
+    {
+        this.sourceFolder = sourceFolder;
     }
 
 
@@ -232,11 +258,11 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
     {
         try
         {
-            final List<IPerformanceSource> performances = this.readPerformanceFiles (file);
+            final List<IPerformanceSource> performances = this.readPerformanceFile (file);
             if (performances.isEmpty () || this.waitForDelivery ())
                 return;
 
-            for (IPerformanceSource performance: performances)
+            for (final IPerformanceSource performance: performances)
             {
                 if (this.waitForDelivery ())
                     break;
@@ -268,7 +294,7 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
      * @param sourceFile The file to process
      * @return The parsed performance(s)
      */
-    protected List<IPerformanceSource> readPerformanceFiles (final File sourceFile)
+    protected List<IPerformanceSource> readPerformanceFile (final File sourceFile)
     {
         throw new RuntimeException (this.getClass ().getName () + " does not support Performance files.");
     }
@@ -629,7 +655,7 @@ public abstract class AbstractDetector<T extends ICoreTaskSettings> extends Abst
      */
     protected void createMetadata (final IMetadata metadata, final IFileBasedSampleData sampleData, final String [] parts, final String category)
     {
-        if (this.settingsConfiguration instanceof MetadataSettingsUI metadataSettings)
+        if (this.settingsConfiguration instanceof final MetadataSettingsUI metadataSettings)
         {
             metadata.detectMetadata (metadataSettings, parts, category);
             if (sampleData != null)

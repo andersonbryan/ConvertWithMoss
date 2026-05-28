@@ -100,7 +100,7 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
             recalculateSamplePositions (multisampleSource, 44100);
         this.writeSamples (sampleFolder, multisampleSource, doLimit ? OPTIMIZED_AUDIO_FORMAT : DEFAULT_AUDIO_FORMAT);
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -203,7 +203,7 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
                 sb.append (zone.getVelocityLow ()).append ('\t').append (zone.getVelocityHigh ()).append ('\t');
 
                 // Pan - CURRENTLY IGNORED
-                sb.append (formatMapDouble ((zone.getTuning () + 1.0) / 2.0)).append ('\t');
+                sb.append (formatMapDouble ((zone.getPanning () + 1.0) / 2.0)).append ('\t');
 
                 // Start / End
                 sb.append (formatMapDouble (zone.getStart () / numSampleFrames)).append ('\t');
@@ -303,7 +303,7 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
             // Osc1Pan: [0..1] ~ [L..R] - already set in the sample maps
             parameters.add (new WaldorfQpatParameter ("Osc" + groupIndex + "Pan", "Center", 0.5f));
 
-            createPitchEnvelopeModulator (parameters, firstZone.getPitchModulator (), i + 1);
+            createPitchEnvelopeModulator (parameters, firstZone.getPitchEnvelopeModulator (), i + 1);
 
             if (i == 0)
             {
@@ -538,9 +538,9 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
     {
         StreamUtils.writeUnsigned32 (out, WaldorfQpatConstants.MAGIC, false);
         StreamUtils.writeUnsigned32 (out, PRESET_VERSION, false);
-        StreamUtils.writeASCII (out, StringUtils.fixASCII (name), WaldorfQpatConstants.MAX_STRING_LENGTH);
-        StreamUtils.writeASCII (out, StringUtils.fixASCII (metadata.getCreator ()), WaldorfQpatConstants.MAX_STRING_LENGTH);
-        StreamUtils.writeASCII (out, StringUtils.fixASCII (metadata.getDescription ()).replace ('\r', ' ').replace ('\n', ' '), WaldorfQpatConstants.MAX_STRING_LENGTH);
+        StreamUtils.writeAscii (out, StringUtils.fixASCII (name), WaldorfQpatConstants.MAX_STRING_LENGTH);
+        StreamUtils.writeAscii (out, StringUtils.fixASCII (metadata.getCreator ()), WaldorfQpatConstants.MAX_STRING_LENGTH);
+        StreamUtils.writeAscii (out, StringUtils.fixASCII (metadata.getDescription ()).replace ('\r', ' ').replace ('\n', ' '), WaldorfQpatConstants.MAX_STRING_LENGTH);
 
         final List<String> categories = new ArrayList<> ();
         categories.add (metadata.getCategory ());
@@ -548,7 +548,7 @@ public class WaldorfQpatCreator extends AbstractWavCreator<WaldorfQpatCreatorUI>
         while (categories.size () < 4)
             categories.add ("");
         for (int i = 0; i < 4; i++)
-            StreamUtils.writeASCII (out, StringUtils.fixASCII (categories.get (i)), WaldorfQpatConstants.MAX_STRING_LENGTH);
+            StreamUtils.writeAscii (out, StringUtils.fixASCII (categories.get (i)), WaldorfQpatConstants.MAX_STRING_LENGTH);
     }
 
 

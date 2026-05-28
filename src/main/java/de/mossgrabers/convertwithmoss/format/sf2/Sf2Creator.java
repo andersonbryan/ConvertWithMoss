@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import de.mossgrabers.convertwithmoss.core.DetectSettings;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractCreator;
@@ -29,7 +30,7 @@ import de.mossgrabers.convertwithmoss.core.model.ISampleZone;
 import de.mossgrabers.convertwithmoss.core.model.enumeration.FilterType;
 import de.mossgrabers.convertwithmoss.exception.CompressionNotSupportedException;
 import de.mossgrabers.convertwithmoss.file.AudioFileUtils;
-import de.mossgrabers.convertwithmoss.file.riff.RiffID;
+import de.mossgrabers.convertwithmoss.file.riff.InfoRiffChunkId;
 import de.mossgrabers.convertwithmoss.file.sf2.Generator;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2File;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2Instrument;
@@ -37,6 +38,7 @@ import de.mossgrabers.convertwithmoss.file.sf2.Sf2InstrumentZone;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2Modulator;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2Preset;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2PresetZone;
+import de.mossgrabers.convertwithmoss.file.sf2.Sf2RiffChunkId;
 import de.mossgrabers.convertwithmoss.file.sf2.Sf2SampleDescriptor;
 import de.mossgrabers.convertwithmoss.file.wav.DataChunk;
 import de.mossgrabers.convertwithmoss.file.wav.FormatChunk;
@@ -61,6 +63,13 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
     }, -1, true);
 
     private static final int                    PADDING                  = 46;
+
+    private static final Set<Integer>           SUPPORTED_BIT_DEPTHS     = new HashSet<> ();
+    static
+    {
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (16));
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (24));
+    }
 
 
     /**
@@ -96,6 +105,17 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
     public void createPresetLibrary (final File destinationFolder, final List<IMultisampleSource> multisampleSources, final String libraryName) throws IOException
     {
         this.storeMultisample (multisampleSources, destinationFolder, libraryName);
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkProcessingCompatibility (final DetectSettings detectSettings)
+    {
+        if (detectSettings.reduceBitDepth <= 0 || SUPPORTED_BIT_DEPTHS.contains (Integer.valueOf (detectSettings.reduceBitDepth)))
+            return true;
+        this.notifier.log ("IDS_PROCESSING_REDUCE_BIT_DEPTH_NOT_SUPPORTED", Integer.toString (detectSettings.reduceBitDepth), "16, 24");
+        return false;
     }
 
 
@@ -158,7 +178,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
             sf2File.write (out);
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -185,7 +205,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
         }
 
         // Version number
-        infoChunk.addInfoField (RiffID.SF_IFIL_ID, new byte []
+        infoChunk.addInfoField (Sf2RiffChunkId.IFIL_ID, new byte []
         {
             2,
             0,
@@ -195,17 +215,17 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
 
         // Mandatory info fields
         // Wave-table sound engine
-        infoChunk.addInfoTextField (RiffID.SF_ISNG_ID, "EMU8000", 256);
-        infoChunk.addInfoTextField (RiffID.INFO_INAM, StringUtils.fixASCII (name), 256);
+        infoChunk.addInfoTextField (Sf2RiffChunkId.ISNG_ID, "EMU8000", 256);
+        infoChunk.addInfoTextField (InfoRiffChunkId.INFO_INAM, StringUtils.fixASCII (name), 256);
 
         // Optional info fields
         infoChunk.addCreationDate (multisampleSources.get (0).getMetadata ().getCreationDateTime ());
         final String creator = String.join (", ", creators);
         if (!creator.isBlank ())
-            infoChunk.addInfoTextField (RiffID.INFO_IENG, StringUtils.fixASCII (creator), 256);
+            infoChunk.addInfoTextField (InfoRiffChunkId.INFO_IENG, StringUtils.fixASCII (creator), 256);
         final String description = String.join ("\n", descriptions);
         if (!description.isBlank ())
-            infoChunk.addInfoTextField (RiffID.INFO_ICMT, StringUtils.fixASCII (description), 65536);
+            infoChunk.addInfoTextField (InfoRiffChunkId.INFO_ICMT, StringUtils.fixASCII (description), 65536);
     }
 
 
@@ -332,22 +352,22 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
         instrumentZone.addModulator (Sf2Modulator.MODULATOR_PITCH_BEND.intValue (), Generator.FINE_TUNE, bendUp, 0x10, 0);
 
         // Set panning
-        double pan = sampleZone.getTuning ();
+        double pan = sampleZone.getPanning ();
         final int sampleType = sampleDescriptor.getSampleType ();
         if (sampleType == Sf2SampleDescriptor.LEFT)
             pan = -1;
         else if (sampleType == Sf2SampleDescriptor.RIGHT)
             pan = 1;
-        instrumentZone.addSignedGenerator (Generator.PANNING, (int) (pan * 500.0));
+        instrumentZone.addSignedGenerator (Generator.PANNING, (int) Math.round (pan * 500.0));
 
         // Set the pitch
         instrumentZone.addGenerator (Generator.OVERRIDING_ROOT_KEY, sampleZone.getKeyRoot ());
 
         final double tune = sampleZone.getTuning ();
-        final int coarse = (int) tune;
+        final int coarse = (int) Math.round (tune);
         instrumentZone.addSignedGenerator (Generator.COARSE_TUNE, coarse);
-        instrumentZone.addSignedGenerator (Generator.FINE_TUNE, (int) ((tune - coarse) * 100.0));
-        instrumentZone.addGenerator (Generator.SCALE_TUNE, (int) (sampleZone.getKeyTracking () * 100.0));
+        instrumentZone.addSignedGenerator (Generator.FINE_TUNE, (int) Math.round ((tune - coarse) * 100.0));
+        instrumentZone.addGenerator (Generator.SCALE_TUNE, (int) Math.round (sampleZone.getKeyTracking () * 100.0));
 
         // Set the key & velocity range
         instrumentZone.addGenerator (Generator.KEY_RANGE, limitToDefault (sampleZone.getKeyLow (), 0), limitToDefault (sampleZone.getKeyHigh (), 127));
@@ -357,7 +377,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
         instrumentZone.addGenerator (Generator.SAMPLE_MODES, sampleZone.getLoops ().isEmpty () ? 0 : 1);
 
         // Gain
-        instrumentZone.addGenerator (Generator.INITIAL_ATTENUATION, (int) (-sampleZone.getGain () * 10.0));
+        instrumentZone.addGenerator (Generator.INITIAL_ATTENUATION, (int) Math.round (-sampleZone.getGain () * 10.0));
 
         final double ampDepth = sampleZone.getAmplitudeVelocityModulator ().getDepth ();
         if (ampDepth != 0)
@@ -375,11 +395,11 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
 
         // Set the pitch envelope. It might be overwritten in the filter section since Sf2 only
         // supports one modulation envelope
-        final IEnvelopeModulator pitchModulator = sampleZone.getPitchModulator ();
+        final IEnvelopeModulator pitchModulator = sampleZone.getPitchEnvelopeModulator ();
         final double pitchModDepth = pitchModulator.getDepth ();
         if (pitchModDepth > 0)
         {
-            instrumentZone.addSignedGenerator (Generator.MOD_ENV_TO_PITCH, (int) (pitchModDepth * IEnvelope.MAX_ENVELOPE_DEPTH));
+            instrumentZone.addSignedGenerator (Generator.MOD_ENV_TO_PITCH, (int) Math.round (pitchModDepth * IEnvelope.MAX_ENVELOPE_DEPTH));
             final IEnvelope pitchEnvelope = pitchModulator.getSource ();
             setEnvelopeTime (instrumentZone, Generator.MOD_ENV_DELAY, pitchEnvelope.getDelayTime ());
             setEnvelopeTime (instrumentZone, Generator.MOD_ENV_ATTACK, pitchEnvelope.getAttackTime ());
@@ -471,7 +491,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
                         sample24 |= 0xFF000000;
 
                     // Clean, predictable conversion
-                    short sample16 = (short) Math.round (sample24 / 256.0);
+                    final short sample16 = (short) Math.round (sample24 / 256.0);
 
                     // Store as 16-bit little-endian
                     sampleLeftData[offset] = (byte) (sample16 & 0xFF);
@@ -509,7 +529,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
                             sample24 |= 0xFF000000;
 
                         // Clean, predictable conversion
-                        short sample16 = (short) Math.round (sample24 / 256.0);
+                        final short sample16 = (short) Math.round (sample24 / 256.0);
 
                         // Store as 16-bit little-endian
                         sampleRightData[offset] = (byte) (sample16 & 0xFF);
@@ -559,7 +579,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
         sampleDescriptor.setSampleType (sampleType);
         sampleDescriptor.setSampleRate (formatChunk.getSampleRate ());
         sampleDescriptor.setOriginalPitch (Math.clamp (sampleZone.getKeyRoot (), 0, 127));
-        sampleDescriptor.setPitchCorrection ((int) (sampleZone.getTuning () * 100));
+        sampleDescriptor.setPitchCorrection ((int) Math.round (sampleZone.getTuning () * 100));
 
         String name = sampleZone.getName ();
         if (name.endsWith ("-") || name.endsWith ("_"))
@@ -590,7 +610,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
 
     private static int convertEnvelopeTime (final double time)
     {
-        return (int) (Math.log (time) * 1200.0 / Math.log (2));
+        return (int) Math.round (Math.log (time) * 1200.0 / Math.log (2));
     }
 
 
@@ -601,7 +621,7 @@ public class Sf2Creator extends AbstractCreator<Sf2CreatorUI>
         // Attenuation is in centi-bel (dB / 10), so 0 is maximum volume, about 1000 is off
         // This is likely not correct but since there is also no documentation what the percentage
         // volume values mean in dB it is the best we can do...
-        return (int) Math.clamp ((1.0 - value) * 1000.0, 0, 1000);
+        return (int) Math.round (Math.clamp ((1.0 - value) * 1000.0, 0, 1000));
     }
 
 

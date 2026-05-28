@@ -55,7 +55,7 @@ public class ExternalModulator
 
     /**
      * Get the destination type.
-     * 
+     *
      * @return The destination type
      */
     public long getDestType ()
@@ -66,7 +66,7 @@ public class ExternalModulator
 
     /**
      * Get the source type.
-     * 
+     *
      * @return The source type
      */
     public long getSourceType ()
@@ -77,7 +77,7 @@ public class ExternalModulator
 
     /**
      * Get the modulation intensity.
-     * 
+     *
      * @return The intensity [0..1], needs to be rounded after the 2nd fraction!
      */
     public float getIntensity ()
@@ -112,13 +112,13 @@ public class ExternalModulator
         // System.out.println ("Dest Type: " + this.destType);
 
         @SuppressWarnings("unused")
-        long unknown2 = StreamUtils.readUnsigned32 (in, false); // 01 00 00 00
+        final long unknown2 = StreamUtils.readUnsigned32 (in, false); // 01 00 00 00
         // System.out.println ("Unknown 2: " + unknown2);
 
         try
         {
             @SuppressWarnings("unused")
-            final String destinationDesc = StreamUtils.readWith4ByteLengthAscii (in);
+            final String destinationDesc = StreamUtils.readAsciiWith4ByteLength (in);
             // System.out.println ("Destination Desc:" + destinationDesc);
         }
         catch (final IOException _)
@@ -139,7 +139,7 @@ public class ExternalModulator
         // System.out.println ("A-C: " + a + ":" + b + ":" + c);
 
         @SuppressWarnings("unused")
-        int unknown3 = StreamUtils.readUnsigned16 (in, false);
+        final int unknown3 = StreamUtils.readUnsigned16 (in, false);
         // System.out.println ("Unknown 3: " + unknown3);
 
         // TODO There can be multiple descriptions, maybe similar to internal modulator
@@ -147,7 +147,7 @@ public class ExternalModulator
         final String modDescription;
         try
         {
-            modDescription = StreamUtils.readWith4ByteLengthAscii (in);
+            modDescription = StreamUtils.readAsciiWith4ByteLength (in);
             // System.out.println ("Mod. Description: " + modDescription);
         }
         catch (final IOException _)
@@ -160,18 +160,18 @@ public class ExternalModulator
         if (!modDescription.isEmpty ())
         {
             @SuppressWarnings("unused")
-            int unknown4 = in.read ();
-            // System.out.println ("Unknown 4: " + unknown4);
+            final int unknown4 = in.read ();
         }
+        // System.out.println ("Unknown 4: " + unknown4);
 
         @SuppressWarnings("unused")
-        long unknown5 = StreamUtils.readUnsigned16 (in, false);
+        final long unknown5 = StreamUtils.readUnsigned16 (in, false);
         // System.out.println ("Unknown 5: " + unknown5);
 
         try
         {
             @SuppressWarnings("unused")
-            final String description = StreamUtils.readWith4ByteLengthAscii (in);
+            final String description = StreamUtils.readAsciiWith4ByteLength (in);
             // System.out.println ("Description: " + description);
         }
         catch (final IOException _)
@@ -181,22 +181,22 @@ public class ExternalModulator
         }
 
         @SuppressWarnings("unused")
-        long unknown6 = StreamUtils.readUnsigned32 (in, false);
+        final long unknown6 = StreamUtils.readUnsigned32 (in, false);
         // System.out.println ("Unknown 6: " + unknown6);
 
         this.sourceType = StreamUtils.readUnsigned32 (in, false);
         // System.out.println ("Source Type: " + this.sourceType);
 
         @SuppressWarnings("unused")
-        long unknown8 = StreamUtils.readUnsigned32 (in, false);
+        final long unknown8 = StreamUtils.readUnsigned32 (in, false);
         // System.out.println ("Unknown 8: " + unknown8);
 
         @SuppressWarnings("unused")
-        long arraySlot = StreamUtils.readUnsigned32 (in, false);
+        final long arraySlot = StreamUtils.readUnsigned32 (in, false);
         // System.out.println ("Array Slot: " + arraySlot);
 
         @SuppressWarnings("unused")
-        byte [] padding = in.readNBytes (7);
+        final byte [] padding = in.readNBytes (7);
 
         // System.out.println ("-----------------------");
     }

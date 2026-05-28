@@ -19,7 +19,7 @@ public abstract class AbstractCoreTask<T extends ICoreTaskSettings> implements I
     protected final String    name;
     protected final String    prefix;
     protected final INotifier notifier;
-    protected final T         settingsConfiguration;
+    protected T               settingsConfiguration;
 
 
     /**
@@ -65,27 +65,16 @@ public abstract class AbstractCoreTask<T extends ICoreTaskSettings> implements I
 
     /** {@inheritDoc} */
     @Override
+    public void setSettings (final T settings)
+    {
+        this.settingsConfiguration = settings;
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
     public void shutdown ()
     {
         // Intentionally empty
-    }
-
-
-    protected void notifyProgress ()
-    {
-        this.notifier.log ("IDS_NOTIFY_PROGRESS");
-    }
-
-
-    protected void notifyNewline ()
-    {
-        this.notifier.log ("IDS_NOTIFY_LINE_FEED");
-    }
-
-
-    protected void notifyNewline (final int count)
-    {
-        if (count > 0 && count % 80 == 0)
-            this.notifyNewline ();
     }
 }

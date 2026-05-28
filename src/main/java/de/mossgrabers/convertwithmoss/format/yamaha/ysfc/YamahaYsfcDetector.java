@@ -18,8 +18,8 @@ import java.util.Set;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
 import de.mossgrabers.convertwithmoss.core.NoteParser;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractCreator;
 import de.mossgrabers.convertwithmoss.core.detector.AbstractDetector;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
@@ -208,7 +208,7 @@ public class YamahaYsfcDetector extends AbstractDetector<YamahaYsfcDetectorUI>
 
     /** {@inheritDoc} */
     @Override
-    protected List<IPerformanceSource> readPerformanceFiles (final File sourceFile)
+    protected List<IPerformanceSource> readPerformanceFile (final File sourceFile)
     {
         if (this.waitForDelivery ())
             return Collections.emptyList ();
@@ -321,8 +321,8 @@ public class YamahaYsfcDetector extends AbstractDetector<YamahaYsfcDetectorUI>
                         if (limitKeyrangeAndVelocity (sampleZone, element))
                         {
                             fillParameterValues (sampleZone, element);
-                            sampleZone.setBendDown ((part.getPitchBendRangeLower () - 64) * 100);
                             sampleZone.setBendUp ((part.getPitchBendRangeUpper () - 64) * 100);
+                            sampleZone.setBendDown ((part.getPitchBendRangeLower () - 64) * 100);
                             group.addSampleZone (sampleZone);
                         }
                     }
@@ -721,7 +721,7 @@ public class YamahaYsfcDetector extends AbstractDetector<YamahaYsfcDetectorUI>
         zone.setTuning (zone.getTuning () + pitchOffset);
         zone.setKeyTracking (element.getPitchKeyFollowSensitivity () / 100.0);
 
-        zone.setPanning ((zone.getTuning () + MathUtils.normalizeIntegerRange (element.getPan (), -63, 63, 64)) / 2.0);
+        zone.setPanning ((zone.getPanning () + MathUtils.normalizeIntegerRange (element.getPan (), -63, 63, 64)) / 2.0);
 
         final int level = element.getElementLevel ();
         zone.setGain (level == 0 ? Double.NEGATIVE_INFINITY : -95.25 + 2 * level * 0.375);
@@ -754,7 +754,7 @@ public class YamahaYsfcDetector extends AbstractDetector<YamahaYsfcDetectorUI>
         final boolean hasNoEnvelope = pegHoldLevel == 128 && pegAttackLevel == 128 && pegDecay1Level == 128 && pegDecay2Level == 128 || pegHoldTime == 0 && pegAttackTime == 0 && pegDecay1Time == 0 && pegDecay2Time == 0 && pegReleaseTime == 0;
         if (!hasNoEnvelope)
         {
-            final IEnvelopeModulator pitchEnvelopeModulator = zone.getPitchModulator ();
+            final IEnvelopeModulator pitchEnvelopeModulator = zone.getPitchEnvelopeModulator ();
             pitchEnvelopeModulator.setDepth (MathUtils.normalizeIntegerRange (element.getPegDepth (), -64, 63, 64));
             final IEnvelope pitchEnvelope = pitchEnvelopeModulator.getSource ();
             pitchEnvelope.setDelayTime (YamahaYsfcPartElement.convertEnvelopeTimeToSeconds (pegHoldTime));

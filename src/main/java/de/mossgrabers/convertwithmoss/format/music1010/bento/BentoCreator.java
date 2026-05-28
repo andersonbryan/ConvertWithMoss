@@ -18,11 +18,12 @@ import java.util.Set;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import de.mossgrabers.convertwithmoss.core.DetectSettings;
 import de.mossgrabers.convertwithmoss.core.IInstrumentSource;
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
 import de.mossgrabers.convertwithmoss.core.IPerformanceSource;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractWavCreator;
 import de.mossgrabers.convertwithmoss.core.creator.DestinationAudioFormat;
 import de.mossgrabers.convertwithmoss.core.detector.DefaultInstrumentSource;
@@ -59,6 +60,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
 
     private static final Map<String, String>    TRACK_PARAM_ATTRIBUTES       = new HashMap<> ();
     private static final Map<String, String>    MULTISAMPLE_PARAM_ATTRIBUTES = new HashMap<> ();
+    private static final Set<Integer>           SUPPORTED_BIT_DEPTHS         = new HashSet<> ();
     static
     {
         TRACK_PARAM_ATTRIBUTES.put ("selcellpos", "0");
@@ -107,6 +109,10 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("lforatebeatsync", "0");
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("legatomode", "0");
         MULTISAMPLE_PARAM_ATTRIBUTES.put ("celldisppos", "0");
+
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (16));
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (24));
+        SUPPORTED_BIT_DEPTHS.add (Integer.valueOf (32));
     }
 
 
@@ -197,7 +203,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
             this.writeSamples (fullPresetFolder, multisampleSource, resample ? OPTIMIZED_AUDIO_FORMAT : DEFEAULT_AUDIO_FORMAT, trim);
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -236,7 +242,18 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
             Files.copy (source.toPath (), new File (source.getParentFile (), "preview.wav").toPath ());
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkProcessingCompatibility (final DetectSettings detectSettings)
+    {
+        if (detectSettings.reduceBitDepth <= 0 || SUPPORTED_BIT_DEPTHS.contains (Integer.valueOf (detectSettings.reduceBitDepth)))
+            return true;
+        this.notifier.log ("IDS_PROCESSING_REDUCE_BIT_DEPTH_NOT_SUPPORTED", Integer.toString (detectSettings.reduceBitDepth), "16, 24");
+        return false;
     }
 
 
@@ -281,6 +298,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
             this.notifier.log ("IDS_1010_MUSIC_ADDING_INSTRUMENT", multisampleSource.getName ());
             final List<IGroup> groups = this.combineSplitStereo (multisampleSource);
             multisampleSource.setGroups (groups);
+            this.checkDuplicateRanges (groups);
 
             final Element trackElement = XMLUtils.addElement (document, sessionElement, Music1010Tag.TRACK);
             trackElement.setAttribute (Music1010Tag.ATTR_TYPE, "multisamtrack");
@@ -326,22 +344,6 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
             for (final Map.Entry<String, String> entry: MULTISAMPLE_PARAM_ATTRIBUTES.entrySet ())
                 paramsElement.setAttribute (entry.getKey (), entry.getValue ());
             paramsElement.setAttribute (Music1010Tag.ATTR_INTERPOLATION_QUALITY, this.settingsConfiguration.isInterpolationQualityHigh () ? "1" : "0");
-
-            // TODO Ask 1010music about these 3 parameters:
-
-            // The following parameters (panning, gain and pitch) are only available on instrument
-            // level
-            // Panning: -100..100% -> -1000..1000
-            // final Optional<Double> globalPanning = multisampleSource.getGlobalPanning ();
-            // if (globalPanning.isPresent ())
-            // paramsElement.setAttribute (Music1010Tag.ATTR_PANNING, Integer.toString ((int)
-            // Math.clamp (globalPanning.get ().doubleValue () * 1000.0, -1000.0, 1000.0)));
-
-            // -12..12dB -> -12000..12000
-            // gaindb="4300"
-            // -24..24 -> -24000..24000
-            // pitch="-19350"
-            // panpos="-352"
 
             // Add amplitude envelope
             if (!groups.isEmpty ())
@@ -437,7 +439,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
     {
         // Stored in WAV file: zone.getGain (), zone.getTune ()
 
-        /////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
         // Sample element and attributes
 
         final Element cellElement = XMLUtils.addElement (document, groupElement, Music1010Tag.CELL);
@@ -448,7 +450,18 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
         final String filename = this.createSampleFilename (zone, 0, ".wav");
         paramsElement.setAttribute (Music1010Tag.ATTR_FILENAME, presetPath + filename);
 
-        /////////////////////////////////////////////////////
+        // IMPROVE The following parameters (panning, gain and pitch) are only available on
+        // instrument level (1010music needs to implement it on sample level first)
+        // Panning: -100..100% -> -1000..1000
+        // paramsElement.setAttribute (Music1010Tag.ATTR_PANNING, Integer.toString ((int) Math.clamp
+        // (zone.getPanning () * 1000.0, -1000.0, 1000.0)));
+        // -12..12dB -> -12000..12000
+        // gaindb="4300"
+        // -24..24 -> -24000..24000
+        // pitch="-19350"
+        // panpos="-352"
+
+        ///////////////////////////////////////////////////
         // Key & Velocity attributes
 
         final int keyLow = limitToDefault (zone.getKeyLow (), 0);
@@ -477,7 +490,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
             XMLUtils.setIntegerAttribute (paramsElement, Music1010Tag.ATTR_SAMPLE_LENGTH, stop);
         }
 
-        /////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
         // Loops
 
         // Set to one-shot if there are no loops
@@ -518,7 +531,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
         // Negative values for frequency represent a low-pass filter, positive values a high-pass.
         // Note: no poles supported
         final double normalizedFrequency = MathUtils.normalizeFrequency (filter.getCutoff (), IFilter.MAX_FREQUENCY);
-        int frequency = (int) (normalizedFrequency * 1000.0);
+        int frequency = (int) Math.round (normalizedFrequency * 1000.0);
         if (type == FilterType.LOW_PASS)
             frequency -= 1000;
         paramsElement.setAttribute (Music1010Tag.ATTR_FILTER_CUTOFF, Integer.toString (frequency));
@@ -526,7 +539,7 @@ public class BentoCreator extends AbstractWavCreator<Music1010CreatorUI>
         // Note: Resonance is in the range [0..1] but it is not documented what value 1
         // represents. Therefore, we assume 40dB maximum and a linear range (could also
         // be logarithmic).
-        final int resonance = (int) (filter.getResonance () * 1000.0);
+        final int resonance = (int) Math.round (filter.getResonance () * 1000.0);
         paramsElement.setAttribute (Music1010Tag.ATTR_FILTER_RESONANCE, Integer.toString (resonance));
     }
 

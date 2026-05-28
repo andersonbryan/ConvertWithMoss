@@ -54,7 +54,7 @@ public class Group
 
         final ByteArrayInputStream in = new ByteArrayInputStream (groupChunk.getPublicData ());
 
-        this.name = StreamUtils.readWithLengthUTF16 (in);
+        this.name = StreamUtils.readUtf16WithLength (in);
         this.volume = StreamUtils.readFloatLE (in);
         this.pan = StreamUtils.readFloatLE (in);
         this.tune = StreamUtils.readFloatLE (in);
@@ -105,7 +105,7 @@ public class Group
     }
 
 
-    private void parseEnvelopes (final List<KontaktPresetChunk> children) throws IOException
+    private void parseEnvelopes (final List<KontaktPresetChunk> children)
     {
         for (final KontaktPresetChunk childChunk: children)
         {
@@ -113,8 +113,16 @@ public class Group
             if (id == KontaktPresetChunkID.PAR_INTERNAL_MOD || id == KontaktPresetChunkID.PAR_MOD_BASE)
             {
                 final InternalModulator internalModulator = new InternalModulator ();
-                internalModulator.read (childChunk);
-                this.internalModulators.add (internalModulator);
+                try
+                {
+                    internalModulator.read (childChunk);
+                    this.internalModulators.add (internalModulator);
+                }
+                catch (final RuntimeException | IOException ex)
+                {
+                    // TODO Improve reading InternalModulator
+                    // Ignore unknown formats (a user reported for v8.1) but don't crash
+                }
             }
         }
     }
@@ -131,7 +139,7 @@ public class Group
     {
         final ByteArrayOutputStream out = new ByteArrayOutputStream ();
 
-        StreamUtils.writeWithLengthUTF16 (out, this.name);
+        StreamUtils.writeUtf16WithLength (out, this.name);
         StreamUtils.writeFloatLE (out, this.volume);
         StreamUtils.writeFloatLE (out, this.pan);
         StreamUtils.writeFloatLE (out, this.tune);

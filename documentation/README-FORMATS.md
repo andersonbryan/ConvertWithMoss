@@ -31,26 +31,38 @@ If the format uses WAV files to store the samples, the following options to addi
 
 The following multi-sample formats are supported:
 
-- [1010music bento](#1010music-bento)
-- [1010music blackbox, tangerine, bitbox](#1010music-blackbox-tangerine-bitbox)
-- [Ableton Sampler](#ableton-sampler)
-- [Akai MPC Keygroups / Drum](#akai-mpc-keygroups--drum)
-- [Bitwig Multisample](#bitwig-multisample)
-- [CWITEC TX16Wx](#cwitec-tx16wx)
-- [DecentSampler](#decentsampler)
-- [Expert Sleepers disting EX](#expert-sleepers-disting-ex)
-- [Kontakt NKI/NKM](#kontakt-nkinkm)
-- [Korg KSC/KMP/KSF](#korg-ksckmpksf)
-- [Korg wavestate/modwave](#korg-wavestatemodwave)
-- [Logic EXS24](#logic-exs24)
-- [Native Instruments Maschine](#native-instruments-maschine)
-- [Propellerhead Reason NN-XT](#propellerhead-reason-nn-xt)
-- [Sample files (AIFF, FLAC, NCW, OGG, WAV)](#sample-files-aiff-flac-ncw-ogg-wav)
-- [SFZ](#sfz)
-- [SoundFont 2](#soundfont-2)
-- [TAL Sampler](#tal-sampler)
-- [Waldorf Quantum MkI, MkII / Iridium / Iridium Core](#waldorf-quantum-mki-mkii--iridium--iridium-core)
-- [Yamaha YSFC](#yamaha-ysfc)
+* [1010music bento](#1010music-bento)
+* [1010music blackbox, tangerine, bitbox](#1010music-blackbox-tangerine-bitbox)
+* [Ableton Sampler](#ableton-sampler)
+* [Akai AKP/AKM (S5000/S6000/Z4/Z8/MPC4000)](#akai-akpakm-s5000s6000z4z8mpc4000) - read only
+* [Akai MESA](#akai-mesa) - read only
+* [Akai MPC Keygroups/Drum](#akai-mpc-keygroups--drum)
+* [Akai MPC Project/Track](#akai-mpc-projecttrack)
+* [Akai MPC60](#akai-mpc60) - read only
+* [Akai MPC500/MPC1000/MPC2500](#akai-mpc500mpc1000mpc2500) - read only
+* [Akai MPC2000/MPC2000XL/MPC3000](#akai-mpc2000mpc2000xlmpc3000) - read only
+* [Akai S900/S950 image](#akai-s900s950-series-disk-image) - read only
+* [Akai S1000/S3000 image](#akai-s1000s3000-series-disk-image) - read only
+* [Bitwig Multisample](#bitwig-multisample)
+* [CWITEC TX16Wx](#cwitec-tx16wx)
+* [DecentSampler](#decentsampler)
+* [discoDSP Bliss](#discodsp-bliss)
+* [Ensoniq EPS/EPS16+/ASR-10](#ensoniq-epseps16asr-10) - read only
+* [Ensoniq Mirage](#ensoniq-mirage) - read only
+* [Expert Sleepers disting EX](#expert-sleepers-disting-ex)
+* [ISO/IMG Files](#isoimg-files)
+* [Kontakt NKI/NKM](#kontakt-nkinkm)
+* [Korg KSC/KMP/KSF](#korg-ksckmpksf)
+* [Korg wavestate/modwave](#korg-wavestatemodwave)
+* [Logic EXS24](#logic-exs24)
+* [Native Instruments Maschine](#native-instruments-maschine)
+* [Propellerhead Reason NN-XT](#propellerhead-reason-nn-xt)
+* [Sample files (AIFF, FLAC, NCW, OGG, WAV)](#sample-files-aiff-flac-ncw-ogg-wav)
+* [SFZ](#sfz)
+* [SoundFont 2](#soundfont-2)
+* [TAL Sampler](#tal-sampler)
+* [Waldorf Quantum MkI, MkII / Iridium / Iridium Core](#waldorf-quantum-mki-mkii--iridium--iridium-core)
+* [Yamaha YSFC](#yamaha-ysfc)
 
 ## 1010music bento
 
@@ -101,6 +113,34 @@ ConvertWithMoss can extract Sampler and Simpler presets from ADV files as well a
 
 ADV files and their samples need to be placed in the Ableton user library in the correct folders to allow Ableton to open it. Therefore, ConvertWithMoss creates the necessary folder structure which can be simply copied to the user library. If the source has sub-folders the global option *Create folder structure* should be deactivated otherwise it can be quite tedious to collect all the results files with their additional Ableton sub-folder structure.
 
+### Destination Options
+
+* Option to set the *Ableton Version*. Setting it to *12* will add additional Round-Robin information (but cannot be loaded in Ableton 11).
+
+## Akai AKP/AKM (S5000/S6000/Z4/Z8/MPC4000)
+
+This format uses a chunk based binary format with the ending AKP. It supports up to 99 key-groups. A key-group covers a note range with up to 4 velocity layers. AKM files are a multi configuration of up to 32 AKP preset files. The AKP files are only referenced from the AKM. Available parameters are the MIDI channel, panning, volume and key-range.
+AKP files are used if destination is Preset or Preset Library. AKM files are used if destination is Performance or Performance Library. 
+Only reading of the AKP/AKM formats is supported.
+
+## Akai S900/S950 series disk image
+
+The Akai S900 is a 12-bit sampler, with a variable sample rate from 7.5 kHz through to 40 kHz. Up to 32 samples can be created and stored to disk along with any edit settings. An expanded version, the Akai S950, was released in 1988 alongside the higher end S1000. The S950 soon followed the S900 and offered increased memory and sampling rates. The sample rate was now variable from 7.5 to 48kHz and it could hold up to 99 samples in memory. Memory could be expanded from 750KB to 2.25MB. Unlike the S1000 series, the S900 series allows a sample to loop alternating forwards and backwards.
+
+**Help needed:**
+* I am missing the info about the different velocity modulation settings. If you own one of these machines it would be great if you could provide me some examples with different velocity settings (keeping all other parameters identical).
+* Furthermore, if you have a HFE file with valid data I would like to take a look.
+
+## Akai S1000/S3000 series disk image
+
+The Akai S1000 and S3000 series are landmark professional digital samplers first introduced by Akai in the late 1980s and early 1990s. The S1000 became widely adopted in studios and electronic music production for its 16-bit PCM sampling, extensive on-board editing, and reliable MIDI integration. The S3000 series built on that legacy with expanded memory, improved filtering, and more advanced modulation and layering capabilities, offering deeper sound design flexibility.
+
+The CD format used with the S1000/S3000 series was a proprietary Akai CD-ROM structure built on standard ISO-9660 physical media but organized according to Akai’s own disk architecture. Data was stored as 16-bit linear PCM sample files along with separate program and keygroup parameter data, arranged in volumes that the sampler’s operating system could index via SCSI. Unlike generic audio CDs (Red Book), these discs were data CDs containing structured directories and allocation tables specific to Akai’s file system, enabling direct loading of samples, programs, and partitions into memory. While ConvertWithMoss cannot directly read the CDs, it can read images created from them with other tools (normally named *.iso). There is no write support.
+
+## Akai MESA
+
+The Akai MESA S3P format is a computer-side representation of Akai S-series program data used by the original MESA (Mac/PC Multi-Editor and Sample Accelerator) librarian/editor software for the [S-3000](#akai-s1000s3000-series-disk-image) family. In practice the .S3P extension contains a classic S3000-style Program (instrument) encoded in a format akin to MIDI SysEx dumps, with the sample waveforms stored externally as accompanying WAV files on a computer. Internally the Program’s structure—keygroups, sample references, mapping, filters and loop parameters—is essentially the same as an Akai S-series Program on disk; MESA simply encapsulates the Akai program data in its own file container for editing and transfer.
+
 ## Akai MPC Keygroups / Drum
 
 A MPC Keygroup or MPC Drum setup is stored in a folder. It contains a description file (.xpm) and the sample files (.WAV). Both keygroup and drum types are supported.
@@ -110,9 +150,45 @@ Restrictions are:
 * A round robin keygroup can only contain up to 4/8 layers (groups). An error is displayed in this case but the file is converted anyway.
 * Only 128 keygroups are allowed. An error is displayed in this case but the file is written anyway but might not be loadable.
 
+### Source Options
+
+* Ignore Loops: There are XPM files which do not contain loops but the related WAV files do (seems to happen with the MPC Autosampler). ConvertWithMoss uses the loops from the WAV files in that case. This might not be what you intended if a multi-sample should be one-shot. Enable this option to ignore the loops.
+
 ### Destination Options
 
 * Limit layers to: MPC Firmware 3.4 increased the number of possible layers in a keygroup to 8. This option allows you to choose between 4 (for older firmware revisions) or 8.
+
+## Akai MPC Project/Track
+
+A track file (*.xty) is a MPC v3 specific file that saves all settings, samples, macros, FX and MIDI data associated with a track. A track consists of two elements; the track file itself and a trackData folder containing the samples used within the track (ending with '_\[TrackData\]'). If the track contains a keygroup it is extracted as a multi-sample source.
+A project file (*.xpj) contains all track and project settings. All tracks which contain a keygroup are extracted as a multi-sample source.
+
+### Source Options
+
+* Ignore Loops: There are XPM files which do not contain loops but the related WAV files do (seems to happen with the MPC Autosampler). ConvertWithMoss uses the loops from the WAV files in that case. This might not be what you intended if a multi-sample should be one-shot. Enable this option to ignore the loops.
+
+## Akai MPC60
+
+Reads Akai MPC60 Set files (*.SET). Such files are monoliths containing the samples as well. This format stores 32 'pads'. Each pad is assigned to 1 MIDI note but they must not and the default is that they are off. Therefore, the pads are simply mapped to MIDI keys in ascending order starting with MIDI note 36.   
+A pad can reference another pad for a velocity split.
+
+The sampling rate is fixed to 40kHz which is quite uncommon and some programs might not be able to play it back.
+
+Floppy disk backups (ending with *.IMG or *.HFE) in MPC60 format can be read as well.
+
+**Several parameters are still unknown. Currently, mainly the samples and names are converted. Please get in touch if you have a MPC60 and can spend some time in analysis by storing different parameter settings.**
+
+## Akai MPC500/MPC1000/MPC2500
+
+Reads Akai MPC500/MPC1000/MPC2500 programs (*.PGM) which reference WAV files. This format stores 64 'pads'. Each pad is assigned to 1 MIDI note and can contain up to four samples with different velocity settings.
+
+**I am missing the info about the filter envelope. If you own one of these machines it would be great if you could provide me some examples with different filter envelope settings (keeping all other parameters identical).**
+
+## Akai MPC2000/MPC2000XL/MPC3000
+
+Reads Akai MPC2000/MPC2000XL/MPC3000 programs (*.PGM). This format stores 64 'pads'. Each pad is assigned to 1 MIDI note and can contain up to three samples with 2 velocity splits. All PGM files can only reference SND's in the same folder as the PGM.
+
+CD-Rom/Harddisk backups (ending with *.ISO, *.IMG or *.HFE) in MPC2000 and MPC2000XL format can be read as well.
 
 ## Bitwig Multisample
 
@@ -166,6 +242,42 @@ There are two issues with amplitude envelopes:
 * %ENV_RELEASE_VALUE%
 * %ENV_VELOCITY_SENSITIVITY%
 
+## discoDSP Bliss
+
+Bliss is a multi-platform (Windows, MacOS & Linux) sampler by discoDSP (https://www.discodsp.com/bliss/).
+It provides support for multi-samples and a bank system (containing up to 128 patches).
+Both the program (.zbp) as well as the bank (.zbb) are stored as monoliths (zipped) with a XML description file and all samples. The samples are stored in FLAC format (16/24 bit). The full format specification is available here: https://github.com/reales/bliss-format.
+
+## Ensoniq EPS/EPS16+/ASR-10
+
+The Ensoniq EPS, Ensoniq EPS16+, and Ensoniq ASR-10 were influential hardware samplers from the late 1980s and 1990s, known for their distinctive sound, practical workflow, and integrated sequencing features. The EPS made professional sampling more accessible, while the EPS16+ added effects processing and stereo audio routing. The ASR-10 extended the series with greater processing power, improved editing, and expanded performance capabilities.
+
+The file format is more or less identical on the 3 models with the additions of the added parameters of the later models (all files can be exchanged between the models). However, there are plenty of different storage formats which contain the actual instrument files:
+
+* HFE, GKH, EDE, EDA: These formats contain the data of a full diskette with some additional metadata.
+* IMG: The raw data of a diskette without any addition information.
+* ISO: FAT file system which can contain many EPS/ASR files.
+* EFE: This format contains exactly 1 EPS/ASR file with additional metadata.
+
+ConvertWithMoss can read them all but writing is not supported.
+
+## Ensoniq Mirage
+
+The Ensoniq Mirage, introduced in 1984, was a groundbreaking 8-bit digital sampler that democratized sampling technology for musicians. Priced at around $1,695, it was one of the first affordable samplers on the market—a fraction of the cost of competitors like the Fairlight CMI or E-mu Emulator. The Mirage featured 8-voice polyphony, a small 2-digit LED display, and used 3.5" floppy disks for storing samples and sounds. Despite its limited memory (just 128KB) and lo-fi character, it became hugely popular in the mid-1980s and found its way onto countless recordings across pop, hip-hop, and electronic music.The Mirage was available in both keyboard (DSK-1, DSK-8) and rack-mount (DSM-1) versions.
+
+Its open architecture was fairly unusual for hardware of that era and gave the Mirage an active user community of developers and enthusiasts who continued to push the instrument's boundaries well beyond what Ensoniq originally intended which led to several alternative operating systems. One of them is Triton Soundprocess, it uses its own filesystem which is not supported (if someone has any knowledge about it, please get in touch).
+
+This disk format is proprietary with a complex layout. Each disk contains 3 sounds. Each sound consists of a lower and upper layer. Each layer can have up to 8 samples. Each layer has 4 programs with different parameter settings. The programs of the lower and upper layer can be selected differently which gives 4x4=16 different configurations! To make things confusing these sounds are interleaved with OS and sequence data on the disk. ConvertWithMoss can read such disk files (*.hfe, *.img or *.edm).
+
+### Issues and Workarounds
+
+1. Since the format does not provide any naming, the name of the files are used. If a file contains exactly 2 dashes the name is split into 3 parts and they are used for the 3 sounds. E.g. label a file like 'Name1-Name2-Name3.img' to get a proper names for the multi-samples.
+2. To keep things manageable only the matching programs are exported (e.g. Program 1 from the lower layer with Program 1 from the upper layer). This means each disk will result to 3x4=12 multi-samples.
+3. Another issue is that the format does not store the root note of the samples. The pitch is only determined by the sample-rate and the tuning. The current sample-rate is extracted from the disk as well but in theory it could be totally wrong.
+4. The filter cutoff value is not fully understood. Therefore, settings which produce no sound are ignored and noi filter is set in such a case.
+5. There can be some very short loop lengths (like 256 samples) which might cause a playback issue with some multi-sample players.
+6. It uses quite uncommon sample rate which might cause a playback issue with some multi-sample players.
+
 ## Expert Sleepers disting EX
 
 The disting EX is a multi-function Eurorack module which provides many different algorithms. On of them is the SD Multisample algorithm which is an eight voice polyphonic, three part multi-timbral, sample playback instrument, playing WAV files from the MicroSD card. It can have up to 3 input CV/gate pairs, or can be played via MIDI or I2C. It supports both velocity switches and round robins per sample.
@@ -175,6 +287,14 @@ The basic multi-sample setup is encoded in the file-names of the samples. Furthe
 
 * Re-sample to 16bit/44.1kHz: If enabled, samples will be resampled to 16bit and 44.1kHz. While the device can play higher resolutions as well it decrease the number of voices it can play.
 * Trim sample to range of zone start to end: Since the format does not support a sample start attribute, this fixes the issue.
+
+## ISO/IMG Files
+
+Searches for files ending with *.ISO or *.IMG. Currently, the following formats can be handled:
+
+* [Akai S1000/3000](#akai-s1000s3000-series-disk-image)
+* [Akai MPC2000/MPC2000XL](#akai-mpc2000mpc2000xlmpc3000)
+* [Ensoniq EPS/ASR](#ensoniq-epseps16asr-10) (only *.ISO)
 
 ## Kontakt NKI/NKM
 
@@ -230,7 +350,6 @@ The format is documented in detail (more or less) in the appendix of the respect
 
 ### Destination Options
 
-* Write group KMPs: Writes a KMP for each group in the source multi-sample. This option will be ignored for split stereo source files.
 * Enable the +12dB option: Increases the volume of each sample by +12dB. Use for low volume samples.
 * Set sample volume to +99: If enabled, sets all sample volumes to +99. Use for very low volume samples.
 

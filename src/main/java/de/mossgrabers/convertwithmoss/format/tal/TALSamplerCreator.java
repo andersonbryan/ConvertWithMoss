@@ -17,7 +17,7 @@ import org.w3c.dom.Element;
 
 import de.mossgrabers.convertwithmoss.core.IMultisampleSource;
 import de.mossgrabers.convertwithmoss.core.INotifier;
-import de.mossgrabers.convertwithmoss.core.MathUtils;
+import de.mossgrabers.convertwithmoss.core.algorithm.MathUtils;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractCreator;
 import de.mossgrabers.convertwithmoss.core.creator.AbstractWavCreator;
 import de.mossgrabers.convertwithmoss.core.model.IEnvelope;
@@ -67,7 +67,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
 
         this.storePreset (relativeFolderName, destinationFolder, multisampleSource, multiFile, metadata.get ());
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -161,7 +161,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
      */
     private static void createSample (final Document document, final String folderName, final Element programElement, final int groupCounter, final Element groupElement, final ISampleZone zone)
     {
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Sample element and attributes
 
         final Element sampleElement = XMLUtils.addElement (document, groupElement, TALSamplerTag.MULTISAMPLE);
@@ -171,7 +171,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
         if (gain != 0)
             // Not sure if this is correct or if proper dB conversion would need to be applied...
             XMLUtils.setDoubleAttribute (sampleElement, TALSamplerTag.VOLUME, convertGain (gain), 6);
-        XMLUtils.setDoubleAttribute (sampleElement, TALSamplerTag.PANNING, (zone.getTuning () + 1.0) / 2.0, 2);
+        XMLUtils.setDoubleAttribute (sampleElement, TALSamplerTag.PANNING, (zone.getPanning () + 1.0) / 2.0, 2);
 
         XMLUtils.setIntegerAttribute (sampleElement, TALSamplerTag.START_SAMPLE, Math.max (0, zone.getStart ()));
         final int stop = zone.getStop ();
@@ -186,7 +186,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
             // transpose and de-tune are both +-24 semi-tones, fine tuning is set on the program
             // with +-100 cent
 
-            final int transpose = (int) tune;
+            final int transpose = (int) Math.round (tune);
             final double fine = tune - transpose;
             int detune = 0;
             if (transpose > 24 || transpose < -24)
@@ -198,7 +198,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
 
         XMLUtils.setIntegerAttribute (sampleElement, TALSamplerTag.PITCH_KEY_TRACK, zone.getKeyTracking () > 0 ? 1 : 0);
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Key & Velocity attributes
 
         final int keyLow = limitToDefault (zone.getKeyLow (), 0);
@@ -210,7 +210,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
 
         // No note and velocity cross-fades
 
-        /////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
         // Loops
 
         final List<ISampleLoop> loops = zone.getLoops ();
@@ -229,7 +229,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
             XMLUtils.setIntegerAttribute (sampleElement, TALSamplerTag.LOOP_ALTERNATE, type == LoopType.ALTERNATING ? 1 : 0);
         }
 
-        ////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
         // Static not relevant attributes
 
         XMLUtils.setDoubleAttribute (sampleElement, TALSamplerTag.FADE_IN_SAMPLES, 0, 1);
@@ -256,7 +256,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
 
         final double maxEnvelopeTime = TALSamplerConstants.getMediumSampleLength (groups);
 
-        //////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Amplitude
 
         final IEnvelope amplitudeEnvelope = zone.getAmplitudeEnvelopeModulator ().getSource ();
@@ -270,7 +270,7 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
         if (ampModDepth != 0)
             modulators.add (new TALSamplerModulator (TALSamplerModulator.SOURCE_ID_VELOCITY, TALSamplerModulator.DEST_ID_VOLUME_A, ampModDepth));
 
-        //////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Filter
 
         if (optFilter.isPresent ())
@@ -308,10 +308,10 @@ public class TALSamplerCreator extends AbstractWavCreator<WavChunkSettingsUI>
                 modulators.add (new TALSamplerModulator (TALSamplerModulator.SOURCE_ID_VELOCITY, TALSamplerModulator.DEST_ID_CUTOFF, cutoffModDepth));
         }
 
-        //////////////////////////////////////////////////
+        /////////////////////////////////////////////////
         // Pitch
 
-        final IEnvelopeModulator pitchModulator = zone.getPitchModulator ();
+        final IEnvelopeModulator pitchModulator = zone.getPitchEnvelopeModulator ();
         final double pitchModDepth = pitchModulator.getDepth ();
         if (pitchModDepth > 0)
         {

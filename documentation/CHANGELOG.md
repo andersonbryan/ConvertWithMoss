@@ -1,6 +1,114 @@
 # Changes
 
-## 15.2.0 (unreleased)
+## 17.2.0 (unreleased)
+
+* Added support for Elektron Tonverk emulti.
+* ISO File
+  * New: Added detection of Ensoniq EPS/ASR ISOs.
+
+## 17.1.0
+
+* Added support for reading Ensoniq Mirage disks (*.hfe, *.img, *.edm).
+* Added support for reading Ensoniq EPS/EPS16+/ASR-10 disks (*.hfe, *.img, *.gkh, *.ede, *.eda, *.efe).
+* Ableton Sampler
+  * New: Read/write of round-robin setting (requires Ableton 12).
+  * New: Add a creator option to either write files for Ableton 11 or Ableton 12.
+  * New: Constant Power XF is set now to true (instead of linear crossfade).
+  * Fixed: Transposition was off by 1 octave when writing.
+* EXS24
+  * Fixed: Group volume was not decoded correctly.
+* Yamaha YSFC
+  * Fixed: Samples need to be fixed to 44.1kHz (includes up-sampling).
+
+## 17.0.0
+
+* Added support for reading Akai MPC60 programs.
+* Added support for reading Akai MPC500/MPC1000/MPC2500 programs.
+* Added support for reading Akai MPC2000/MPC2000XL/MPC3000 programs.
+* Added support for reading Akai S900/S950 programs.
+* Added specific entry for Akai S1000/S3000 (and not only generic ISO). Searches for IMG files as well.
+* New: Source formats show their file endings with a tooltip.
+* ISO File
+  * New: Added support for MPC2000 format.
+  * New: Shows an info text if it is a plain ISO 9660 file which can be accessed with OS functionality.  
+* Korg KMP
+  * Fixed: Velocity layers need to be stored in separate KMP files.
+* Yamaha YSFC
+  * Fixed: Libraries are now limited to a max. of 128 performances.
+  * Fixed: The performance names are now limited to 20 characters.
+
+## 16.5.1
+
+* Fixed: Processing: Sample reduction did not always work and improved logging.
+
+## 16.5.0
+
+* Added support for discoDSP Bliss.
+* Added option to maximize samples.
+* Added several options to minimize the size of a multi-sample.
+* New: Improved sample writing progress logging output.
+* Fixed: Don't report WAV files with padded zeros at the end as broken.
+* 1010music Samplers
+  * New: If the source material contains layered samples, a warning will be displayed.
+* DecentSampler
+  * New: Write seqLength attribute for group as well.
+* Kontakt 5+
+  * Fixed: Envelope hold and decay times were reversed.
+
+## 16.2.0
+
+* Added support for reading Akai MESA (*.s3p).
+* Added support for reading Akai S1000/S3000 series images (*.iso).
+* Fixed: Gain could not be set below +0.125dB.
+* Fixed: Reading broken WAV files could make ConvertWithMoss hang.
+* Ableton ADV, Sf2, TX16W, Yamaha YSFC
+  * Fixed: Negative fine tuning values could be off by 1 when written.
+* Akai AKP, MPC XPJ/XTY, TAL Sampler, TX16W
+  * Fixed: Reading: Pitch-bend down was inverted (pitching up instead of down).
+* DecentSampler
+  * Fixed: Creating presets did miss adding seqMode attribute for round_robin groups.
+* EXS24
+  * Fixed: Writing: Coarse and fine tuning was always set to 0.
+* Sf2
+  * Fixed: 24-bit samples were not extracted correctly when read.
+
+## 16.1.1
+
+* Fixed: Application could not be closed if it was installed for the first time.
+* Kontakt
+  * Fixed: Prevent a crash when InternalModulator cannot be read.
+
+## 16.1.0
+
+* Added support for reading Akai MPC XPJ and XTY files.
+* Akai AKP/AKM
+  * New: Renamed "Akai S5000/S6000" to "Akai AKP/AKM".
+  * New: Added reading support for Akai Z4/Z8/MPC4000 AKP/AKM format.
+  * New: Added version information to the log file.
+  * New: Improved conversion of filter resonance.
+  * New: The root note is now modified instead re-pitching it via tuning parameter.
+* Akai XPM
+  * Fixed: Never read loops from WAV files.
+* SFZ
+  * Fixed: Prevent creation of filter type with poles not supported by SFZ (2 poles will be set in such a case).
+
+## 16.0.0
+
+* Added reading support for Akai S5000/S6000 AKP/AKM format.
+* User Interface
+  * Moved several setting to a specific Settings dialog.
+  * Updated button icons.
+* Fixed: Tuning value was set for panning.
+* Kontakt
+  * Fixed: Tuning was not written correctly.
+* MPC Keygroups
+  * New: Added an option to ignore loops
+
+## 15.5.1
+
+* Fixed: Split-stereo files were not combined into stereo files for formats which require it (e.g. Bento).
+
+## 15.5.0
 
 * Added support for 1010music Bento
 * Fixed: The header of written FLAC files did not contain the sample length, which is valid but many readers rely on that value and crash otherwise.
@@ -13,6 +121,10 @@
 * MPC
   * New: The file version and source platform is now logged.
   * New: Improved check for valid loops. If none is present it is loaded from the WAV file if present.
+* TAL Sampler
+  * New: Conversion does not stop after first missing sample. All missing samples are logged.
+  * Fixed: Could not read file when the program element had more than 200 attributes.
+  * Fixed: Version 11 of the format has now a double to indicate of a layer is enabled or not which led to empty results.
 * Yamaha YSFC
   * Fixed: End of loop was always set to the end of the sample.
 

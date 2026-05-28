@@ -72,7 +72,8 @@ public class DefaultSampleZone implements ISampleZone
 
 
     /**
-     * Constructor. Copies all metadata from the given source zone.
+     * Constructor. Copies all metadata except the sample data from the given source zone. Warning:
+     * the filter and loops are only assigned not cloned!
      *
      * @param zone The zone from which to copy the metadata
      */
@@ -94,7 +95,7 @@ public class DefaultSampleZone implements ISampleZone
 
     /**
      * Constructor for setting the sample data later.
-     * 
+     *
      * @param sampleName The name of the sample
      * @param keyLow The lowest key covered by the range
      * @param keyHigh The highest key covered by the range
@@ -383,7 +384,7 @@ public class DefaultSampleZone implements ISampleZone
     @Override
     public void setGain (final double gain)
     {
-        this.gain = Math.clamp (gain, 0.125, 24.0);
+        this.gain = Math.min (gain, 24.0);
     }
 
 
@@ -509,7 +510,7 @@ public class DefaultSampleZone implements ISampleZone
 
     /** {@inheritDoc} */
     @Override
-    public IEnvelopeModulator getPitchModulator ()
+    public IEnvelopeModulator getPitchEnvelopeModulator ()
     {
         return this.pitchModulator;
     }
@@ -549,14 +550,14 @@ public class DefaultSampleZone implements ISampleZone
         this.velocityCrossfadeLow = other.getVelocityCrossfadeLow ();
         this.velocityCrossfadeHigh = other.getVelocityCrossfadeHigh ();
         this.gain = other.getGain ();
-        this.panning = other.getTuning ();
+        this.panning = other.getPanning ();
         this.tune = other.getTuning ();
         this.keyTracking = other.getKeyTracking ();
         this.bendUp = other.getBendUp ();
         this.bendDown = other.getBendDown ();
         this.isReversed = other.isReversed ();
         this.amplitudeEnvelopeModulator = other.getAmplitudeEnvelopeModulator ();
-        this.pitchModulator = other.getPitchModulator ();
+        this.pitchModulator = other.getPitchEnvelopeModulator ();
         final Optional<IFilter> filterOpt = other.getFilter ();
         this.filter = filterOpt.isPresent () ? filterOpt.get () : null;
 

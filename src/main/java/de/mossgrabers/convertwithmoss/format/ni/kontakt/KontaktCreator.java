@@ -87,7 +87,7 @@ public class KontaktCreator extends AbstractWavCreator<KontaktCreatorUI>
             kontaktType.writeNKI (out, safeSampleFolderName, multisampleSource, calculateSampleSize (sampleFiles));
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
@@ -124,7 +124,7 @@ public class KontaktCreator extends AbstractWavCreator<KontaktCreatorUI>
         final String libraryName = AbstractCreator.createSafeFilename (performanceSource.getName ());
         final boolean isKontakt1 = this.settingsConfiguration.isKontakt1 ();
         final IKontaktFormat kontaktType = isKontakt1 ? new Kontakt1Format (this.notifier, false) : new Kontakt5Format (this.notifier);
-        this.createNKM (destinationFolder, performanceSource.getInstruments (), libraryName, kontaktType);
+        this.createNKM (destinationFolder, instruments, libraryName, kontaktType);
     }
 
 
@@ -171,7 +171,7 @@ public class KontaktCreator extends AbstractWavCreator<KontaktCreatorUI>
             kontaktType.writeNKM (out, sampleFilePaths, safeInstrumentSources, calculateSampleSize (sampleFiles));
         }
 
-        this.notifier.log ("IDS_NOTIFY_PROGRESS_DONE");
+        this.progress.notifyDone ();
     }
 
 
